@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: refactor to include as download command in cvms.sh (optional folder or use current folder to read vms.yml)
+
 cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
 root_dir=$(pwd)
 
