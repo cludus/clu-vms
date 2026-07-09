@@ -1,53 +1,36 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-default_user=$(yq '.defaults.user' vms.yml)
-default_pass=$(yq '.defaults.pass' vms.yml)
-default_os=$(yq '.defaults.os' vms.yml)
-default_bridge=$(yq '.defaults.bridge' vms.yml)
+cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
+root_dir=$(pwd)
 
-function process_host() {
-  local host="$1"
-  local name=$(echo "$host" | yq '.name')
-  local ip=$(echo "$host" | yq '.ip')
+source "$root_dir/bin/inc/download"
 
-  echo "Processing host: $name with IP: $ip"
-
-  # copy os image to system folder
-
-  # generate config files for cloud-init to config folder
-  #  - meta-data
-  #  - user-data
-  #  - network-config
-
-  # generate iso image with cloud-init config files
-  #  genisoimage \
-  #   -output seed.img \
-  #   -volid cidata -rational-rock -joliet \
-  #   user-data meta-data network-config
-
-  # check cloud-init mounts and scripts to run on first boot
-
-  # generate storage file
-  #  qemu-img create -f qcow2 data.qcow2 100G
-
-  # check vlan (optional) and bridge configuration for qemu networking
-
-  # create vm with qemu command (check how to run in background)
-  #  qemu-system-x86_64 -enable-kvm -m 2G -cpu host \
-  #   -drive format=qcow2,file=system.qcow2 \
-  #   -drive format=qcow2,file=data.qcow2 \
-  #   -cdrom seed.img \
-  #   -netdev bridge,id=net0,br=vmbr0 \
-  #   -device virtio-net-pci,netdev=net0
-
-  # test vm is running and accessible via ssh
+function help_message() {
+  echo "======================="
+  echo "CVMS - Cloud Virtual Machine Setup"
+  echo "Commands:"
+  download_help
+  echo ""
 }
 
-# TODO: refactor to a start command (optional folder or use current folder to read vms.yml)
-readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
-for host in "${hosts[@]}"; do
-  process_host "$host"
-done
+function do_start {
+  command=$1
+  shift
+  case $command in
+    download)
+      do_download "$@"
+      ;;
+    "")
+      help_message
+      ;;
+    "help")
+      help_message
+      ;;
+    *)
+      echo "Unknown command: $command"
+      help_message
+      ;;
+  esac
+}
 
-# TODO
-# stop command: research graceful shutdown of qemu vm (or get pid and kill it)
+do_start "$@"

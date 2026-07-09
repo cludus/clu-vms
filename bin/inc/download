@@ -1,0 +1,36 @@
+# root_dir is inherited from the calling script (cvms.sh) and points to the root directory of the project.
+ROOT_DIR="${root_dir:-$(pwd)}"
+
+function download_help() {
+  echo "======================="
+  echo "Download"
+  echo "  Usage: $0 download"
+  echo "  Downloads the latest cloud images for Alpine Linux and Ubuntu Server."
+  echo ""
+}
+
+# Downloads the latest cloud images for Alpine Linux and Ubuntu Server.
+function do_download() {
+  # destination directory for downloaded images, defaulting to ./imgs in the root directory.
+  DEST_DIR="${ROOT_DIR}/imgs"
+  mkdir -p "$DEST_DIR"
+
+  # alpine
+  ALPINE_MAJOR_VERSION="3.24"
+  ALPINE_FULL_VERSION="3.24.1"
+  ALPINE_DEST_FILE="$DEST_DIR/alpine.img"
+  rm -f "$ALPINE_DEST_FILE"
+  echo ""
+  echo "Downloading Alpine Linux cloud image version ${ALPINE_FULL_VERSION}..."
+  curl "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_MAJOR_VERSION}/releases/cloud/generic_alpine-${ALPINE_FULL_VERSION}-x86_64-bios-cloudinit-r0.qcow2" -o "$ALPINE_DEST_FILE"
+
+  # ubuntu
+  UBUNTU_DEST_FILE="$DEST_DIR/ubuntu.img"
+  rm -f "$UBUNTU_DEST_FILE"
+  echo ""
+  echo "Downloading Ubuntu Server cloud image..."
+  curl https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img -o "$UBUNTU_DEST_FILE"
+
+  echo ""
+  echo "Download complete. Images saved to $DEST_DIR"
+}
