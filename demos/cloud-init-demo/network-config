@@ -1,0 +1,11 @@
+#cloud-config
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: no
+      addresses:
+        - 10.146.101.99/24
+      gateway4: 10.146.101.1
+      nameservers:
+        addresses: [8.8.8.8]

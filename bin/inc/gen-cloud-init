@@ -1,0 +1,76 @@
+# root_dir is inherited from the calling script (cvms.sh) and points to the root directory of the project.
+ROOT_DIR="${root_dir:-$(pwd)}"
+
+function gen-cloud-init_help() {
+  echo "======================="
+  echo "Generate Cloud-Init Configuration"
+  echo "  Usage: $0 gen-cloud-init"
+  echo "  Generates the cloud-init image."
+  echo ""
+}
+
+function copy_base_os_image() {
+  local os_image="alpine.img"
+
+  local source_dir="${ROOT_DIR}/imgs"
+  local source_file="${source_dir}/${os_image}"
+  if [[ ! -f "$source_file" ]]; then
+    echo "Error: Base OS image $source_file not found. Please run the download command first."
+    exit 1
+  fi
+  # Delete the existing OS image if it exists
+  if [[ -f "${os_image}" ]]; then
+    rm -f "${os_image}"
+  fi
+  cp "$source_file" "${os_image}"
+
+  echo "$os_image"
+}
+
+function process_host() {
+  local host="$1"
+  local default_user="$2"
+  local default_pass="$3"
+  local default_os="$4"
+  local default_bridge="$5"
+  local name=$(echo "$host" | yq '.name')
+  local ip=$(echo "$host" | yq '.ip')
+
+  echo "Processing host: $name with IP: $ip"
+
+  # generate config files for cloud-init to config folder
+  #  - meta-data
+  #  - user-data
+  #  - network-config
+
+  # generate iso image with cloud-init config files
+  # rm -f seed.img
+  # genisoimage \
+  #   -output seed.img \
+  #   -volid cidata -rational-rock -joliet \
+  #   user-data meta-data network-config
+}
+
+function do_gen-cloud-init() {
+  echo "Generating cloud-init configuration for all hosts defined in vms.yml..."
+  echo ""
+
+  if [[ ! -f "vms.yml" ]]; then
+    echo "Error: vms.yml not found in the current directory. Please ensure you are in the correct directory and that vms.yml exists."
+    exit 1
+  fi
+
+  local default_user=$(yq '.defaults.user' vms.yml)
+  local default_pass=$(yq '.defaults.pass' vms.yml)
+  local default_os=$(yq '.defaults.os' vms.yml)
+  local default_bridge=$(yq '.defaults.bridge' vms.yml)
+
+  local os_image=$(copy_base_os_image)
+  echo "Copied OS image: $os_image"
+  echo ""
+
+  readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
+  for host in "${hosts[@]}"; do
+    process_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge"
+  done
+}

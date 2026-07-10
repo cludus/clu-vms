@@ -1,28 +1,4 @@
-default_user=$(yq '.defaults.user' vms.yml)
-default_pass=$(yq '.defaults.pass' vms.yml)
-default_os=$(yq '.defaults.os' vms.yml)
-default_bridge=$(yq '.defaults.bridge' vms.yml)
-
 function process_host() {
-  local host="$1"
-  local name=$(echo "$host" | yq '.name')
-  local ip=$(echo "$host" | yq '.ip')
-
-  echo "Processing host: $name with IP: $ip"
-
-  # copy os image to system folder
-
-  # generate config files for cloud-init to config folder
-  #  - meta-data
-  #  - user-data
-  #  - network-config
-
-  # generate iso image with cloud-init config files
-  #  genisoimage \
-  #   -output seed.img \
-  #   -volid cidata -rational-rock -joliet \
-  #   user-data meta-data network-config
-
   # check cloud-init mounts and scripts to run on first boot
 
   # generate storage file
@@ -40,12 +16,6 @@ function process_host() {
 
   # test vm is running and accessible via ssh
 }
-
-# TODO: refactor to a start command (optional folder or use current folder to read vms.yml)
-readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
-for host in "${hosts[@]}"; do
-  process_host "$host"
-done
 
 # TODO
 # stop command: research graceful shutdown of qemu vm (or get pid and kill it)

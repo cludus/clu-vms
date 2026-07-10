@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
 
-cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
-root_dir=$(pwd)
+root_dir="$(dirname "$(dirname "$(readlink -f "$0")")")"
 
 source "$root_dir/bin/inc/download"
+source "$root_dir/bin/inc/gen-cloud-init"
 
 function help_message() {
   echo "======================="
   echo "CVMS - Cludus Cloud Virtual Machine Setup"
   echo "Commands:"
+  echo ""
   download_help
+  gen-cloud-init_help
   echo ""
 }
 
-function do_start {
+function do_start() {
   command=$1
   shift
   case $command in
     download)
       do_download "$@"
+      ;;
+    gen-cloud-init)
+      do_gen-cloud-init "$@"
       ;;
     "")
       help_message
@@ -28,6 +33,8 @@ function do_start {
       ;;
     *)
       echo "Unknown command: $command"
+      echo "Please check the available commands below:"
+      echo ""
       help_message
       ;;
   esac

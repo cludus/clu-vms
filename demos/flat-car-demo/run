@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# wget https://stable.release.flatcar-linux.net/amd64-usr/current/flatcar_production_qemu_image.img -o imgs/flatcar.img
+
+rm demo.img
+cp imgs/flatcar.img demo.img
+
+rm demo.ign
+butane --pretty --strict demo.yaml > demo.ign
+
+# to re-create the data.qcow2 disk and partition with one partition ext4
+#rm data.qcow2
+#qemu-img create -f qcow2 data.qcow2 100G
+#sudo modprobe nbd max_part=8
+#sudo qemu-nbd -c /dev/nbd0 data.qcow2
+#echo 'label: gpt' | sudo sfdisk /dev/nbd0
+#echo ';' | sudo sfdisk /dev/nbd0
+#sudo mkfs.ext4 /dev/nbd0p1
+#sudo qemu-nbd -d /dev/nbd0
+
+qemu-system-x86_64 -enable-kvm -m 2048 -smp 2 \
+  -drive file=demo.img,if=virtio,format=qcow2 \
+  -drive file=data.qcow2,if=virtio,format=qcow2 \
+  -netdev bridge,id=net0,br=vmbr0 \
+  -device virtio-net-pci,netdev=net0 \
+  -fw_cfg name=opt/org.flatcar-linux/config,file=demo.ign
+
+
+#  -netdev bridge,id=eth0,br=vmbr0 \
+#  -device virtio-net-pci,netdev=eth0 \
+#  -object rng-random,filename=/dev/urandom,id=rng0 \
+#  -device virtio-rng-pci,rng=rng0 \
+#  -drive if=none,id=blk,file=output/portainer.img \
+#  -device virtio-blk-pci,drive=blk,bootindex=1 \
+#  -fw_cfg name=opt/org.flatcar-linux/config,file=output/portainer.ign \
+#  -fsdev local,id=conf,security_model=none,readonly=on,path=$(mktemp -d) \
+#  -device virtio-9p-pci,fsdev=conf,mount_tag=config-2 \
+#  -machine q35,accel=kvm,smm=on \
+#  -cpu host -smp 32 \
+#  -global ICH9-LPC.disable_s3=1 \
+#  -global driver=cfi.pflash01,property=secure,value=on

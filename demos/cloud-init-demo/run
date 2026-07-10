@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+#rm -rf .bin/imgs/*
+#curl https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2 -o imgs/alpine.img
+#curl https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img -o imgs/ubuntu.img
+
+### to create a bridge vmbr0 run this
+## Create a bridge named br0
+# sudo ip link add name br0 type bridge
+## Bring the bridge interface online
+# sudo ip link set br0 up
+## Ensure the target interface is up
+# sudo ip link set eth1 up
+## Attach the interface to your bridge
+# sudo ip link set eth1 master br0
+## Strip existing IPs from the physical interface
+# sudo ip addr flush dev eth1
+## Assign the network IP to the bridge instead
+# sudo ip addr add 192.168.1.100/24 dev br0
+
+## to create a VLAN on vmbr0 run this
+# sudo ip link add link vmbr0 name vmbr0.10 type vlan id 10
+# sudo ip link set dev vmbr0.10 up
+
+# copy a new base image
+rm -f alpine.img
+cp ./imgs/alpine.img alpine.img
+
+# recreate the configuration drive for cloud-init
+rm -f seed.img
+genisoimage \
+  -output seed.img \
+  -volid cidata -rational-rock -joliet \
+  user-data meta-data network-config
+
+# to re-create the data.qcow2 disk and partition with one partition ext4
+#rm data.qcow2
+#qemu-img create -f qcow2 data.qcow2 100G
+#sudo modprobe nbd max_part=8
+#sudo qemu-nbd -c /dev/nbd0 data.qcow2
+#echo 'label: gpt' | sudo sfdisk /dev/nbd0
+#echo ';' | sudo sfdisk /dev/nbd0
+#sudo mkfs.ext4 /dev/nbd0p1
+#sudo qemu-nbd -d /dev/nbd0
+
+# running the vm in foreground
+# NOTE: to run in the background use -nographic -daemonize
+# NOTE: there is a protocol QMP of qemu that can be use for control, and monitoring, we need to check it out
+# NOTE: this project is for incremental backups of qcow2 images https://github.com/abbbi/qmpbackup
+qemu-system-x86_64 -m 2048 -smp 2 \
+  -drive file=alpine.img,if=virtio,format=qcow2 \
+  -drive file=data.qcow2,if=virtio,format=qcow2 \
+  -drive file=seed.img,if=virtio,format=raw \
+  -netdev bridge,id=net0,br=vmbr0 \
+  -device virtio-net-pci,netdev=net0
+

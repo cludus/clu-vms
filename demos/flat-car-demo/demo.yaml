@@ -1,0 +1,47 @@
+variant: flatcar
+version: 1.0.0
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6uijLNZXKa3gY44O+puCG6fZ4xvl3jA2N0CfvbucGxSNGDdRjjxhtWSWzgLihygyiYeMFydJNoQEjR6q/G2ydF/2fFWEmNcZGA4twIXTImVmMEAuGAP4i0kMowryz8VaSO8iGZY0h8wofaykd0llHOiF1y5hVO3D0J5Ri2BRBo2B714u5buw5GzHvZHb1cBGBbyXz11fn7T3O50Sztkx5H6uAj3wERfFxHBovFONr3tec/5aAbhDHl9trIk/4WmvU/QgTXNAa56yjtghZITd0JDvjpEpBG6Dg5WrlA1uaQ9zGf0dkj6xuc+jbiGLQyevu32Mxgatc65VLRHkuwvtQu1iocwX6tZYBIEBC/p4zYXVBxZ+Jq/IA29ZYPmEU9YBG69knJb2MTNakOBhNgPhsFrVKEuC3hlgAqDvIPFdc2Eio8C9P9r9e4gTVA5fM4JGp3dqRN0v0iKaG1VFCw/u5TIza8O+96DOB/BfiGf7+2m6qgJiEOlBlGmefNQ/l0HGABqbrONW2bsPMm1X7wAFv9bVXgZWcbofkDujdlniHlxoMBZlQAdlN2bkEViApXMfjzh9hztiZb87Td0FQkXv+N2WZ1NM2UNQSoiIdQ82TAhrmAAJ8YAyzP+HyQ+iPNGSZOg2IjmZq/7CXCc13e30LtWKI29K9KGZKIrvGkU741w== gilberto.vento@gmail.com
+storage:
+  files:
+    - path: /etc/systemd/network/static.network
+      contents:
+        inline: |
+          [Match]
+          Name=eth0
+
+          [Network]
+          Address=10.146.101.15/24
+          Gateway=10.146.101.1
+          DNS=1.1.1.1
+          DNS=8.8.8.8
+  filesystems:
+    - device: /dev/vdb
+      format: ext4
+      path: /var/lib/docker
+      with_mount_unit: true
+systemd:
+  units:
+    - name: docker.service
+      enabled: true
+    - name: portainer.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Portainer
+        After=docker.service
+        Requires=docker.service
+
+        [Service]
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker kill portainer
+        ExecStartPre=-/usr/bin/docker rm portainer
+        ExecStartPre=/usr/bin/docker pull portainer/portainer-ce:latest
+        ExecStart =/usr/bin/docker run --name portainer -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
+        ExecStop=/usr/bin/docker stop portainer
+
+        [Install]
+        WantedBy=multi-user.target
