@@ -1,0 +1,28 @@
+#cloud-config
+password: {{ pass }}
+chpasswd:
+  expire: False
+
+{% if user -%}
+users:
+  - name: {{ user }}
+    lock_passwd: false
+    passwd: {{ pass }}
+{% endif -%}
+
+package_update: true
+packages:
+- lsblk
+- util-linux
+- e2fsprogs-extra
+- sfdisk
+
+write_files:
+- path: /etc/resolv.conf
+  permissions: '0644'
+  owner: root:root
+  content: |
+    nameserver 8.8.8.8
+
+mounts:
+  - [ /dev/vdb1, /mnt, "ext4", "defaults,noatime", "0", "2" ]

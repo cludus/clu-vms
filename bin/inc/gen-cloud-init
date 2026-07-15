@@ -66,10 +66,11 @@ function process_host() {
   local config_dir="$name/config"
   mkdir -p "$config_dir"
 
+  local os_user_data_tpl="${os_name}_user-data.j2"
   local os_network_tpl="${os_name}_network-config.j2"
-  render_j2 "${ROOT_DIR}/tpls/meta-data.j2"      "$config_dir/meta-data"      "name=$name"
-  render_j2 "${ROOT_DIR}/tpls/user-data.j2"      "$config_dir/user-data"      "user=$default_user" "pass=$default_pass" "name=$name"
-  render_j2 "${ROOT_DIR}/tpls/${os_network_tpl}" "$config_dir/network-config" "ip=$ip" "gateway=$gateway" "name=$name"
+  render_j2 "${ROOT_DIR}/tpls/meta-data.j2"        "$config_dir/meta-data" "name=$name"
+  render_j2 "${ROOT_DIR}/tpls/${os_user_data_tpl}" "$config_dir/user-data" "user=$default_user" "pass=$default_pass" "name=$name"
+  render_j2 "${ROOT_DIR}/tpls/${os_network_tpl}"   "$config_dir/network-config" "ip=$ip" "gateway=$gateway" "name=$name"
 
   # generate iso image with cloud-init config files
   local seed_img="$name/seed.img"
