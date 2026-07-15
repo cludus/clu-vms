@@ -1,4 +1,17 @@
 #cloud-config
-password: mypass
+password: {{ pass }}
 chpasswd:
   expire: False
+
+{% if user -%}
+users:
+  - name: {{ user }}
+    lock_passwd: false
+    passwd: {{ pass }}
+{% endif -%}
+
+package_update: true
+packages:
+  - lsblk
+  - util-linux
+  - e2fsprogs-extra

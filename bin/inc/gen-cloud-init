@@ -28,6 +28,26 @@ function copy_base_os_image() {
   echo "$os_name"
 }
 
+function render_j2() {
+  local tpl_path="$1"
+  local out_path="$2"
+  shift 2
+
+  python3 -c '
+import jinja2, os, sys
+tpl_path = sys.argv[1]
+out_path = sys.argv[2]
+env = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(tpl_path)))
+tpl = env.get_template(os.path.basename(tpl_path))
+ctx = {}
+for arg in sys.argv[3:]:
+    k, v = arg.split("=", 1)
+    ctx[k] = v
+with open(out_path, "w") as f:
+    f.write(tpl.render(**ctx))
+' "$tpl_path" "$out_path" "$@"
+}
+
 function process_host() {
   local host="$1"
   local default_user="$2"
@@ -37,16 +57,19 @@ function process_host() {
   local os_name="$6"
   local name=$(echo "$host" | yq '.name')
   local ip=$(echo "$host" | yq '.ip')
+  # Derive gateway from IP (replace last octet with .1)
+  local gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
 
   echo "Processing host: $name with IP: $ip"
 
   # generate config files for cloud-init to config folder
   local config_dir="$name/config"
   mkdir -p "$config_dir"
-  touch "$config_dir/user-data" "$config_dir/meta-data" "$config_dir/network-config"
-  #  - meta-data.j2
-  #  - user-data.j2
-  #  - $os_name_network-config.j2
+
+  local os_network_tpl="${os_name}_network-config.j2"
+  render_j2 "${ROOT_DIR}/tpls/meta-data.j2"      "$config_dir/meta-data"      "name=$name"
+  render_j2 "${ROOT_DIR}/tpls/user-data.j2"      "$config_dir/user-data"      "user=$default_user" "pass=$default_pass" "name=$name"
+  render_j2 "${ROOT_DIR}/tpls/${os_network_tpl}" "$config_dir/network-config" "ip=$ip" "gateway=$gateway" "name=$name"
 
   # generate iso image with cloud-init config files
   local seed_img="$name/seed.img"
@@ -58,6 +81,10 @@ function process_host() {
     -output "$seed_img" \
     -volid cidata -rational-rock -joliet \
     "$config_dir/user-data" "$config_dir/meta-data" "$config_dir/network-config"
+
+  echo ""
+  echo "Generated cloud-init seed image for $name at $seed_img"
+  echo ""
 }
 
 function do_gen-cloud-init() {
@@ -76,6 +103,12 @@ function do_gen-cloud-init() {
       exit 1
     fi
   done
+
+  # Check for Python jinja2 module
+  if ! python3 -c "import jinja2" &> /dev/null; then
+    echo "Error: Python jinja2 module is not installed. Please run: pip install jinja2"
+    exit 1
+  fi
 
   local default_user=$(yq '.defaults.user' vms.yml)
   local default_pass=$(yq '.defaults.pass' vms.yml)
