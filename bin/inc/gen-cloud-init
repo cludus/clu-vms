@@ -10,6 +10,7 @@ function gen-cloud-init_help() {
 }
 
 function copy_base_os_image() {
+  local vm_name="$1"
   local os_name="alpine"
   local os_image="$os_name.img"
 
@@ -19,11 +20,14 @@ function copy_base_os_image() {
     echo "Error: Base OS image $source_file not found. Please run the download command first."
     exit 1
   fi
+
+  local dest="${vm_name}/${os_image}"
+  mkdir -p "$vm_name"
   # Delete the existing OS image if it exists
-  if [[ -f "${os_image}" ]]; then
-    rm -f "${os_image}"
+  if [[ -f "$dest" ]]; then
+    rm -f "$dest"
   fi
-  cp "$source_file" "${os_image}"
+  cp "$source_file" "$dest"
 
   echo "$os_name"
 }
@@ -34,13 +38,13 @@ function process_host() {
   local default_pass="$3"
   local default_os="$4"
   local default_bridge="$5"
-  local os_name="$6"
   local name=$(echo "$host" | yq '.name')
   local ip=$(echo "$host" | yq '.ip')
   # Derive gateway from IP (replace last octet with .1)
   local gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
 
-  echo "Processing host: $name with IP: $ip"
+  local os_name=$(copy_base_os_image "$name")
+  echo "Processing host: $name with IP: $ip (OS: $os_name)"
 
   # generate config files for cloud-init to config folder
   local config_dir="$name/config"
@@ -90,12 +94,8 @@ function do_gen-cloud-init() {
   local default_os=$(yq '.defaults.os' vms.yml)
   local default_bridge=$(yq '.defaults.bridge' vms.yml)
 
-  local os_name=$(copy_base_os_image)
-  echo "Copied OS image: $os_name.img"
-  echo ""
-
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
-    process_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$os_name"
+    process_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge"
   done
 }
