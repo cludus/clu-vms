@@ -1,0 +1,56 @@
+[tools]
+python = "latest"
+yq = "latest"
+
+[tasks.install]
+description = "Install all project dependencies"
+run = """
+# Install mise-managed tools (python, yq)
+mise install
+
+# Install Python library (jinja2) into mise-managed Python
+pip install jinja2
+
+echo ""
+echo "=== System packages ==="
+echo "These must be installed via your system package manager (if missing):"
+echo ""
+echo "  sudo apt install genisoimage qemu-utils"
+echo ""
+
+# Verify system tools
+for tool in genisoimage qemu-img curl; do
+  if command -v "$tool" &>/dev/null; then
+    echo "  ✓ $tool found"
+  else
+    echo "  ✗ $tool MISSING - run: sudo apt install <pkg>"
+  fi
+done
+"""
+
+[tasks.check]
+description = "Verify all required tools are installed"
+run = """
+errors=0
+for tool in python3 yq genisoimage qemu-img curl; do
+  if command -v "$tool" &>/dev/null; then
+    echo "  ✓ $tool"
+  else
+    echo "  ✗ $tool MISSING"
+    errors=$((errors + 1))
+  fi
+done
+if python3 -c "import jinja2" 2>/dev/null; then
+  echo "  ✓ jinja2 (Python)"
+else
+  echo "  ✗ jinja2 (Python) MISSING — run: pip install jinja2"
+  errors=$((errors + 1))
+fi
+if [ $errors -gt 0 ]; then
+  echo ""
+  echo "$errors tool(s) missing. Run 'mise run install' for setup instructions."
+  exit 1
+fi
+echo ""
+echo "All tools present."
+"""

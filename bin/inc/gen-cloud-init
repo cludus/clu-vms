@@ -67,15 +67,16 @@ function process_host() {
     -output "$seed_img" \
     -volid cidata -rational-rock -joliet \
     "$config_dir/user-data" "$config_dir/meta-data" "$config_dir/network-config"
-  echo ""
   echo "Generated cloud-init seed image for $name at $seed_img"
   echo ""
 
   # generate storage file if it doesn't exist
   if [[ ! -f "$name/data.qcow2" ]]; then
     qemu-img create -f qcow2 "$name/data.qcow2" "$default_storage_size"
-    echo ""
     echo "Generated storage file for $name at $name/data.qcow2 with size $default_storage_size"
+    echo ""
+  else
+    echo "Storage file already exists for $name at $name/data.qcow2 — preserved"
     echo ""
   fi
 }
