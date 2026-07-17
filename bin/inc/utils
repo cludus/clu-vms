@@ -1,0 +1,28 @@
+
+# Renders a Jinja2 template to a file.
+# First argument is the path to the template file, second argument is the output file path, and the rest of the arguments are key=value pairs to be used as context for rendering.
+function render_j2() {
+  # Check for Python jinja2 module
+  if ! python3 -c "import jinja2" &> /dev/null; then
+    echo "Error: Python jinja2 module is not installed. Please run: pip install jinja2"
+    exit 1
+  fi
+
+  local tpl_path="$1"
+  local out_path="$2"
+  shift 2
+
+  python3 -c '
+import jinja2, os, sys
+tpl_path = sys.argv[1]
+out_path = sys.argv[2]
+env = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(tpl_path)))
+tpl = env.get_template(os.path.basename(tpl_path))
+ctx = {}
+for arg in sys.argv[3:]:
+    k, v = arg.split("=", 1)
+    ctx[k] = v
+with open(out_path, "w") as f:
+    f.write(tpl.render(**ctx))
+' "$tpl_path" "$out_path" "$@"
+}
