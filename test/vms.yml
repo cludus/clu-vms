@@ -3,6 +3,7 @@ defaults:
   pass: mypass1
   os: alpine
   bridge: vmbr0
+  storage_size: 100G
 
 hosts:
   - name: vm1

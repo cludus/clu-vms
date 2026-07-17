@@ -1,9 +1,6 @@
 function process_host() {
   # check cloud-init mounts and scripts to run on first boot
 
-  # generate storage file
-  #  qemu-img create -f qcow2 data.qcow2 100G
-
   # check vlan (optional) and bridge configuration for qemu networking
 
   # create vm with qemu command (check how to run in background)

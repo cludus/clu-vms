@@ -38,6 +38,7 @@ function process_host() {
   local default_pass="$3"
   local default_os="$4"
   local default_bridge="$5"
+  local default_storage_size="$6"
   local name=$(echo "$host" | yq '.name')
   local ip=$(echo "$host" | yq '.ip')
   # Derive gateway from IP (replace last octet with .1)
@@ -66,10 +67,17 @@ function process_host() {
     -output "$seed_img" \
     -volid cidata -rational-rock -joliet \
     "$config_dir/user-data" "$config_dir/meta-data" "$config_dir/network-config"
-
   echo ""
   echo "Generated cloud-init seed image for $name at $seed_img"
   echo ""
+
+  # generate storage file if it doesn't exist
+  if [[ ! -f "$name/data.qcow2" ]]; then
+    qemu-img create -f qcow2 "$name/data.qcow2" "$default_storage_size"
+    echo ""
+    echo "Generated storage file for $name at $name/data.qcow2 with size $default_storage_size"
+    echo ""
+  fi
 }
 
 function do_gen-cloud-init() {
@@ -82,7 +90,7 @@ function do_gen-cloud-init() {
   fi
 
   # check required tools are installed
-  for tool in yq genisoimage; do
+  for tool in yq genisoimage qemu-img; do
     if ! command -v "$tool" &> /dev/null; then
       echo "Error: $tool is not installed. Please install it and try again."
       exit 1
@@ -93,9 +101,10 @@ function do_gen-cloud-init() {
   local default_pass=$(yq '.defaults.pass' vms.yml)
   local default_os=$(yq '.defaults.os' vms.yml)
   local default_bridge=$(yq '.defaults.bridge' vms.yml)
+  local default_storage_size=$(yq '.defaults.storage_size' vms.yml)
 
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
-    process_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge"
+    process_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$default_storage_size"
   done
 }
