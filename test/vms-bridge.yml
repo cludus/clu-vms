@@ -1,0 +1,26 @@
+defaults:
+  user: alpine
+  pass: mypass1
+  os: alpine
+  bridge: vmbr0
+  storage_size: 100G
+
+# Bridge configuration for qemu networking.
+# This sample auto-creates the bridge on the host when missing (create: true).
+# check_bridge reads all settings from here — no env vars needed.
+# To use this config: copy it over vms.yml (or point the script at it).
+bridge:
+  name: vmbr0
+  phys_if: eth1            # physical interface to enslave (auto-detected if omitted)
+  ip: 10.146.101.1/24       # bridge IP/CIDR (auto-derived from VM subnet if omitted)
+  create: true              # auto-create the bridge if it does not exist
+
+hosts:
+  - name: vm1
+    ip: 10.146.101.210
+  - name: vm2
+    ip: 10.146.101.211
+  - name: vm3
+    ip: 10.146.101.212
+  - name: vm4
+    ip: 10.146.101.213

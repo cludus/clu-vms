@@ -1,3 +1,3 @@
 **/*
 !.gitignore
-!vms.yml
+!vms*.yml

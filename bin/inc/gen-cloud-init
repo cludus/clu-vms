@@ -41,11 +41,18 @@ function process_host() {
   local default_storage_size="$6"
   local name=$(echo "$host" | yq '.name')
   local ip=$(echo "$host" | yq '.ip')
+  # Per-host bridge override; falls back to the default bridge from vms.yml
+  local bridge=$(echo "$host" | yq '.bridge // "" )
+  if [[ -z "$bridge" ]]; then
+    bridge="$default_bridge"
+  fi
+  # Optional per-host VLAN tag (empty means untagged)
+  local vlan=$(echo "$host" | yq '.vlan // "" )
   # Derive gateway from IP (replace last octet with .1)
   local gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
 
   local os_name=$(copy_base_os_image "$name")
-  echo "Processing host: $name with IP: $ip (OS: $os_name)"
+  echo "Processing host: $name with IP: $ip (OS: $os_name, bridge: $bridge${vlan:+, vlan: $vlan})"
 
   # generate config files for cloud-init to config folder
   local config_dir="$name/config"
@@ -103,6 +110,9 @@ function do_gen-cloud-init() {
   local default_os=$(yq '.defaults.os' vms.yml)
   local default_bridge=$(yq '.defaults.bridge' vms.yml)
   local default_storage_size=$(yq '.defaults.storage_size' vms.yml)
+
+  # Ensure the bridge used for qemu networking exists on the host before generating any per-VM configuration.
+  check_bridge
 
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do

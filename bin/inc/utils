@@ -26,3 +26,119 @@ with open(out_path, "w") as f:
     f.write(tpl.render(**ctx))
 ' "$tpl_path" "$out_path" "$@"
 }
+
+# Checks that the bridge interface used for qemu networking exists on the host.
+# Bridge configuration is read from vms.yml:
+#   bridge:
+#     name: vmbr0              # bridge name (falls back to defaults.bridge)
+#     phys_if: eth1            # physical interface to enslave (auto-detected if omitted)
+#     ip: 10.146.101.1/24      # bridge IP/CIDR (auto-derived from VM subnet if omitted)
+#     create: true|false       # when true, auto-create the bridge if missing
+# If the bridge is missing and create is false, prints the commands needed to
+# create it and exits.
+function check_bridge() {
+  local bridge=""
+  local phys_if=""
+  local bridge_cidr=""
+  local create_bridge=0
+
+  # Verify required tools are available
+  if ! command -v yq &> /dev/null; then
+    echo "Error: yq is not installed. Please install it and try again."
+    exit 1
+  fi
+  if ! command -v ip &> /dev/null; then
+    echo "Error: ip (iproute2) is not installed. Please install it and try again."
+    exit 1
+  fi
+  if ! command -v sudo &> /dev/null; then
+    echo "Error: sudo is not installed. Please install it and try again."
+    exit 1
+  fi
+
+  # Read bridge configuration from vms.yml.
+  if [[ ! -f "vms.yml" ]]; then
+    echo "Error: vms.yml not found. Bridge configuration is required."
+    exit 1
+  fi
+
+  local cfg_name cfg_phys cfg_ip cfg_create
+  cfg_name=$(yq '.bridge.name // ""' vms.yml 2>/dev/null)
+  cfg_phys=$(yq '.bridge.phys_if // ""' vms.yml 2>/dev/null)
+  cfg_ip=$(yq '.bridge.ip // ""' vms.yml 2>/dev/null)
+  cfg_create=$(yq '.bridge.create // ""' vms.yml 2>/dev/null)
+  bridge="$cfg_name"
+  phys_if="$cfg_phys"
+  bridge_cidr="$cfg_ip"
+  [[ "$cfg_create" == "true" ]] && create_bridge=1
+
+  # Fall back to defaults.bridge if no bridge name was resolved from bridge.name
+  if [[ -z "$bridge" ]]; then
+    bridge=$(yq '.defaults.bridge // "vmbr0"' vms.yml 2>/dev/null)
+  fi
+
+  if ip link show "$bridge" &> /dev/null; then
+    echo "Bridge $bridge exists on the host."
+    return 0
+  fi
+
+  echo "Warning: Bridge $bridge does not exist on the host."
+
+  # Auto-detect a physical interface if none was provided: prefer the default
+  # route's interface, falling back to the first non-loopback interface.
+  if [[ -z "$phys_if" ]]; then
+    phys_if=$(ip -o route show default 2>/dev/null | awk '{print $5}' | head -n1)
+    if [[ -z "$phys_if" ]]; then
+      phys_if=$(ip -o link show | awk -F': ' '$2 != "lo" {print $2}' | head -n1)
+    fi
+  fi
+
+  # Derive a bridge IP/CIDR from the VM subnet if none was provided. Uses the
+  # first host IP in vms.yml, replaces the last octet with .1, and assumes /24.
+  if [[ -z "$bridge_cidr" ]]; then
+    local first_ip
+    first_ip=$(yq -o=json -I=0 '.hosts[0].ip' vms.yml 2>/dev/null)
+    if [[ -n "$first_ip" ]]; then
+      local gateway
+      gateway=$(echo "$first_ip" | sed 's/\.[0-9]*$/.1/')
+      bridge_cidr="${gateway}/24"
+    fi
+  fi
+
+  echo ""
+  echo "To create the bridge $bridge run the following commands:"
+  echo "  sudo ip link add name $bridge type bridge"
+  echo "  sudo ip link set $bridge up"
+  if [[ -n "$phys_if" ]]; then
+    echo "  sudo ip link set $phys_if up"
+    echo "  sudo ip link set $phys_if master $bridge"
+    echo "  sudo ip addr flush dev $phys_if"
+  fi
+  if [[ -n "$bridge_cidr" ]]; then
+    echo "  sudo ip addr add $bridge_cidr dev $bridge"
+  fi
+  echo ""
+
+  if [[ "$create_bridge" == "1" ]]; then
+    echo "Attempting to create bridge $bridge..."
+    sudo ip link add name "$bridge" type bridge
+    sudo ip link set "$bridge" up
+    if [[ -n "$phys_if" ]]; then
+      sudo ip link set "$phys_if" up
+      sudo ip link set "$phys_if" master "$bridge"
+      sudo ip addr flush dev "$phys_if"
+    fi
+    if [[ -n "$bridge_cidr" ]]; then
+      sudo ip addr add "$bridge_cidr" dev "$bridge"
+    fi
+    if ip link show "$bridge" &> /dev/null; then
+      echo "Bridge $bridge created successfully."
+    else
+      echo "Error: Failed to create bridge $bridge."
+      exit 1
+    fi
+  else
+    echo "Set 'bridge.create: true' in vms.yml to create it automatically, or create it manually."
+    exit 1
+  fi
+}
