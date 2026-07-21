@@ -15,11 +15,11 @@ echo ""
 echo "=== System packages ==="
 echo "These must be installed via your system package manager (if missing):"
 echo ""
-echo "  sudo apt install genisoimage qemu-utils iproute2 sudo"
+echo "  sudo apt install genisoimage qemu-utils iproute2 sudo e2fsprogs util-linux"
 echo ""
 
 # Verify system tools
-for tool in genisoimage qemu-img curl ip sudo; do
+for tool in genisoimage qemu-img qemu-nbd sfdisk mkfs.ext4 curl ip sudo; do
   if command -v "$tool" &>/dev/null; then
     echo "  ✓ $tool found"
   else
@@ -32,7 +32,7 @@ done
 description = "Verify all required tools are installed"
 run = """
 errors=0
-for tool in python3 yq genisoimage qemu-img curl ip sudo; do
+for tool in python3 yq genisoimage qemu-img qemu-nbd sfdisk mkfs.ext4 curl ip sudo; do
   if command -v "$tool" &>/dev/null; then
     echo "  ✓ $tool"
   else
