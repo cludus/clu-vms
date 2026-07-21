@@ -5,6 +5,7 @@ root_dir="$(dirname "$(dirname "$(readlink -f "$0")")")"
 source "$root_dir/bin/inc/utils"
 source "$root_dir/bin/inc/download"
 source "$root_dir/bin/inc/gen-cloud-init"
+source "$root_dir/bin/inc/run-cloud-init"
 
 function help_message() {
   echo "======================="
@@ -13,6 +14,7 @@ function help_message() {
   echo ""
   download_help
   gen-cloud-init_help
+  run-cloud-init_help
   echo ""
 }
 
@@ -25,6 +27,9 @@ function do_start() {
       ;;
     gen-cloud-init)
       do_gen-cloud-init "$@"
+      ;;
+    run-cloud-init)
+      do_run-cloud-init "$@"
       ;;
     "")
       help_message

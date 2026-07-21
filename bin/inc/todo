@@ -1,18 +1,5 @@
 function process_host() {
   # check cloud-init mounts and scripts to run on first boot
-
-  # create vm with qemu command (check how to run in background)
-  #  qemu-system-x86_64 -enable-kvm -m 2G -cpu host \
-  #   -drive format=qcow2,file=system.qcow2 \
-  #   -drive format=qcow2,file=data.qcow2 \
-  #   -cdrom seed.img \
-  #   -netdev bridge,id=net0,br=vmbr0 \
-  #   -device virtio-net-pci,netdev=net0
-  # NOTE: when a vlan tag is set, add vlan=ID to the -netdev argument, e.g.
-  #   -netdev bridge,id=net0,br=vmbr0,vlan=12 \
-  #   -device virtio-net-pci,netdev=net0
-
-  # test vm is running and accessible via ssh
 }
 
 # TODO

@@ -86,12 +86,12 @@ function process_host() {
   local name=$(echo "$host" | yq '.name')
   local ip=$(echo "$host" | yq '.ip')
   # Per-host bridge override; falls back to the default bridge from vms.yml
-  local bridge=$(echo "$host" | yq '.bridge // "" )
+  local bridge=$(echo "$host" | yq '.bridge // ""' )
   if [[ -z "$bridge" ]]; then
     bridge="$default_bridge"
   fi
   # Optional per-host VLAN tag (empty means untagged)
-  local vlan=$(echo "$host" | yq '.vlan // "" )
+  local vlan=$(echo "$host" | yq '.vlan // ""' )
   # Derive gateway from IP (replace last octet with .1)
   local gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
 
