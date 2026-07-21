@@ -3,6 +3,7 @@ defaults:
   pass: mypass1
   os: alpine
   bridge: vmbr0
+  memory: 2G
   storage_size: 100G
 
 # Bridge configuration for qemu networking.

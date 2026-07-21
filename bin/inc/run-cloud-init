@@ -4,14 +4,19 @@ ROOT_DIR="${root_dir:-$(pwd)}"
 function run-cloud-init_help() {
   echo "======================="
   echo "Run Cloud-Init Configuration"
-  echo "  Usage: $0 run-cloud-init"
+  echo "  Usage: $0 run-cloud-init [--foreground]"
   echo "  Runs the cloud-init process."
+  echo "  Options:"
+  echo "    --foreground  Run QEMU in the foreground (default: daemonize)."
   echo ""
 }
 
 function process_host() {
   local host="$1"
   local os_name="$2"
+  local foreground="$3"
+  local default_bridge="$4"
+  local default_memory="$5"
   local name=$(echo "$host" | yq '.name')
   local ip=$(echo "$host" | yq '.ip')
   echo "Running host: $name with IP: $ip ..."
@@ -28,15 +33,30 @@ function process_host() {
     fi
   done
 
-  local default_bridge="$3"
   # Per-host bridge override; falls back to the default bridge from vms.yml
   local bridge=$(echo "$host" | yq '.bridge // ""' )
   if [[ -z "$bridge" ]]; then
     bridge="$default_bridge"
   fi
 
-  # create vm with qemu command (check how to run in background)
-  qemu-system-x86_64 -enable-kvm -m 2G -cpu host \
+  # Per-host memory override; falls back to the default memory from vms.yml
+  local memory=$(echo "$host" | yq '.memory // ""' )
+  if [[ -z "$memory" ]]; then
+    memory="$default_memory"
+  fi
+
+  # build qemu daemon args
+  local daemon_args=()
+  if [[ "$foreground" != "1" ]]; then
+    daemon_args=(-daemonize -pidfile "$name/qemu.pid")
+    echo "  Daemonizing (PID file: $name/qemu.pid) ..."
+  else
+    echo "  Running in foreground mode ..."
+  fi
+
+  # create vm with qemu command
+  qemu-system-x86_64 -enable-kvm -m "$memory" -cpu host \
+    "${daemon_args[@]}" \
     -drive file="$os_image",if=virtio,format=qcow2 \
     -drive file="$data_img",if=virtio,format=qcow2 \
     -drive file="$seed_img",if=virtio,format=raw \
@@ -48,6 +68,13 @@ function process_host() {
 }
 
 function do_run-cloud-init() {
+  local foreground=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --foreground) foreground=1; shift ;;
+    esac
+  done
+
   echo "Running cloud-init vms for all hosts defined in vms.yml..."
   echo ""
 
@@ -65,9 +92,11 @@ function do_run-cloud-init() {
   done
 
   local default_os=$(yq '.defaults.os' vms.yml)
+  local default_bridge=$(yq '.defaults.bridge' vms.yml)
+  local default_memory=$(yq '.defaults.memory' vms.yml)
 
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
-    process_host "$host" "$default_os"
+    process_host "$host" "$default_os" "$foreground" "$default_bridge" "$default_memory"
   done
 }
