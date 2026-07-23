@@ -1,6 +1,0 @@
-function process_host() {
-  # check cloud-init mounts and scripts to run on first boot
-}
-
-# TODO
-# stop command: research graceful shutdown of qemu vm (or get pid and kill it)

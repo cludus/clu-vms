@@ -10,6 +10,7 @@ source "$bin_dir/inc/utils"
 source "$bin_dir/inc/download"
 source "$bin_dir/inc/gen-cloud-init"
 source "$bin_dir/inc/run-cloud-init"
+source "$bin_dir/inc/stop"
 
 function help_message() {
   echo "======================="
@@ -19,6 +20,7 @@ function help_message() {
   download_help
   gen-cloud-init_help
   run-cloud-init_help
+  stop_help
   echo ""
 }
 
@@ -34,6 +36,9 @@ function do_start() {
       ;;
     run-cloud-init)
       do_run-cloud-init "$@"
+      ;;
+    stop)
+      do_stop "$@"
       ;;
     "")
       help_message

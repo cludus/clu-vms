@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+
+ROOT_SCRIPT="${ROOT_SCRIPT:-cvms}"
+
+function stop_help() {
+  echo "======================="
+  echo "Stop"
+  echo "  Usage: $ROOT_SCRIPT stop [host-name]"
+  echo "  Gracefully shuts down QEMU VMs via ACPI."
+  echo "  If no host name is given, stops all hosts defined in vms.yml."
+  echo ""
+}
+
+# Gracefully stop a single VM by its pidfile.
+# Usage: stop_vm <name>
+function stop_vm() {
+  local name="$1"
+  local pidfile="$name/qemu.pid"
+
+  if [[ ! -f "$pidfile" ]]; then
+    echo "VM $name: not running (no PID file found)."
+    return 0
+  fi
+
+  local pid
+  pid=$(cat "$pidfile" 2>/dev/null)
+  if [[ -z "$pid" ]]; then
+    echo "VM $name: PID file is empty, removing stale pidfile."
+    rm -f "$pidfile"
+    return 0
+  fi
+
+  # Check if process is actually running
+  if ! kill -0 "$pid" 2>/dev/null; then
+    echo "VM $name: process $pid is not running, removing stale pidfile."
+    rm -f "$pidfile"
+    return 0
+  fi
+
+  echo "VM $name: sending ACPI shutdown (SIGTERM) to PID $pid..."
+  kill -TERM "$pid"
+
+  # Wait up to 30 seconds for graceful shutdown
+  local waited=0
+  while kill -0 "$pid" 2>/dev/null && [[ $waited -lt 30 ]]; do
+    sleep 1
+    ((waited++))
+  done
+
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "VM $name: did not shut down gracefully, force-killing..."
+    kill -KILL "$pid"
+    sleep 1
+  fi
+
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "VM $name: ERROR — failed to stop process $pid."
+    return 1
+  fi
+
+  rm -f "$pidfile"
+  echo "VM $name: stopped."
+  return 0
+}
+
+function do_stop() {
+  local target="$1"
+
+  if [[ ! -f "vms.yml" ]]; then
+    echo "Error: vms.yml not found in the current directory."
+    exit 1
+  fi
+
+  if [[ -n "$target" ]]; then
+    stop_vm "$target"
+  else
+    echo "Stopping all VMs defined in vms.yml..."
+    readarray -t hosts < <(yq -o=json -I=0 '.hosts[].name' vms.yml 2>/dev/null)
+    for name in "${hosts[@]}"; do
+      name=$(echo "$name" | tr -d '"')
+      stop_vm "$name"
+    done
+  fi
+}
