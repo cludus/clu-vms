@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # root_dir is inherited from the calling script (cvms.sh) and points to the root directory of the project.
 ROOT_DIR="${root_dir:-$(pwd)}"
 
@@ -11,7 +13,7 @@ function run-cloud-init_help() {
   echo ""
 }
 
-function process_host() {
+function cloud_init_process_host() {
   local host="$1"
   local os_name="$2"
   local foreground="$3"
@@ -97,6 +99,6 @@ function do_run-cloud-init() {
 
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
-    process_host "$host" "$default_os" "$foreground" "$default_bridge" "$default_memory"
+    cloud_init_process_host "$host" "$default_os" "$foreground" "$default_bridge" "$default_memory"
   done
 }

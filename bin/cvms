@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
 root_dir="$(dirname "$(dirname "$(readlink -f "$0")")")"
+bin_dir="$root_dir/bin"
 
-source "$root_dir/bin/inc/utils"
-source "$root_dir/bin/inc/download"
-source "$root_dir/bin/inc/gen-cloud-init"
-source "$root_dir/bin/inc/run-cloud-init"
+source "$bin_dir/inc/utils"
+source "$bin_dir/inc/download"
+source "$bin_dir/inc/gen-cloud-init"
+source "$bin_dir/inc/run-cloud-init"
 
 function help_message() {
   echo "======================="

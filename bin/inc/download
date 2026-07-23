@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # root_dir is inherited from the calling script (cvms.sh) and points to the root directory of the project.
 ROOT_DIR="${root_dir:-$(pwd)}"
 

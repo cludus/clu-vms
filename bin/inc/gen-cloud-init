@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # root_dir is inherited from the calling script (cvms.sh) and points to the root directory of the project.
 ROOT_DIR="${root_dir:-$(pwd)}"
 
@@ -76,7 +78,7 @@ function format_data_disk() {
   echo ""
 }
 
-function process_host() {
+function generate_host() {
   local host="$1"
   local default_user="$2"
   local default_pass="$3"
@@ -160,6 +162,6 @@ function do_gen-cloud-init() {
 
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
-    process_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$default_storage_size"
+    generate_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$default_storage_size"
   done
 }
