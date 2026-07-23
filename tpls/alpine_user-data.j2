@@ -1,14 +1,11 @@
 #cloud-config
-password: {{ pass }}
 chpasswd:
   expire: False
 
-{% if user -%}
 users:
   - name: {{ user }}
     lock_passwd: false
-    passwd: {{ pass }}
-{% endif -%}
+    plain_text_passwd: {{ pass }}
 
 package_update: true
 packages:
