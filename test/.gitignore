@@ -2,3 +2,4 @@
 !.gitignore
 !vms-*.yml
 vms.yml
+.assets/

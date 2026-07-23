@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 
-# root_dir is inherited from the calling script (cvms.sh) and points to the root directory of the project.
-ROOT_DIR="${root_dir:-$(pwd)}"
+ROOT_SCRIPT="${ROOT_SCRIPT:-cvms}"
+ASSETS_DIR="${ASSETS_DIR:-.assets}"
 
 function download_help() {
   echo "======================="
   echo "Download"
-  echo "  Usage: $0 download"
+  echo "  Usage: $ROOT_SCRIPT download"
   echo "  Downloads the latest cloud images for Alpine Linux and Ubuntu Server."
   echo ""
 }
 
 # Downloads the latest cloud images for Alpine Linux and Ubuntu Server.
 function do_download() {
-  # destination directory for downloaded images, defaulting to ./imgs in the root directory.
-  DEST_DIR="${ROOT_DIR}/imgs"
+  DEST_DIR="$ASSETS_DIR/imgs"
   mkdir -p "$DEST_DIR"
 
   # alpine

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# root_dir is inherited from the calling script (cvms.sh) and points to the root directory of the project.
-ROOT_DIR="${root_dir:-$(pwd)}"
+ROOT_SCRIPT="${ROOT_SCRIPT:-cvms}"
+ASSETS_DIR="${ASSETS_DIR:-.assets}"
 
 function run-cloud-init_help() {
   echo "======================="
   echo "Run Cloud-Init Configuration"
-  echo "  Usage: $0 run-cloud-init [--foreground]"
+  echo "  Usage: $ROOT_SCRIPT run-cloud-init [--foreground]"
   echo "  Runs the cloud-init process."
   echo "  Options:"
   echo "    --foreground  Run QEMU in the foreground (default: daemonize)."
@@ -23,9 +23,9 @@ function cloud_init_process_host() {
   local ip=$(echo "$host" | yq '.ip')
   echo "Running host: $name with IP: $ip ..."
 
-  local os_image="$name/$os_name.img"
-  local seed_img="$name/seed.img"
-  local data_img="$name/data.qcow2"
+  local os_image="$ASSETS_DIR/$name/$os_name.img"
+  local seed_img="$ASSETS_DIR/$name/seed.img"
+  local data_img="${name}-data.qcow2"
 
   # check required images are present
   for img in "$os_image" "$seed_img" "$data_img"; do

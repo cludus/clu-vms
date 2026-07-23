@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# root_dir is inherited from the calling script (cvms.sh) and points to the root directory of the project.
-ROOT_DIR="${root_dir:-$(pwd)}"
+ROOT_SCRIPT="${ROOT_SCRIPT:-cvms}"
+ASSETS_DIR="${ASSETS_DIR:-.assets}"
 
 function gen-cloud-init_help() {
   echo "======================="
   echo "Generate Cloud-Init Configuration"
-  echo "  Usage: $0 gen-cloud-init"
+  echo "  Usage: $ROOT_SCRIPT gen-cloud-init"
   echo "  Generates the cloud-init image."
   echo ""
 }
@@ -16,15 +16,15 @@ function copy_base_os_image() {
   local os_name="alpine"
   local os_image="$os_name.img"
 
-  local source_dir="${ROOT_DIR}/imgs"
+  local source_dir="$ASSETS_DIR/imgs"
   local source_file="${source_dir}/${os_image}"
   if [[ ! -f "$source_file" ]]; then
     echo "Error: Base OS image $source_file not found. Please run the download command first."
     exit 1
   fi
 
-  local dest="${vm_name}/${os_image}"
-  mkdir -p "$vm_name"
+  local dest="$ASSETS_DIR/${vm_name}/${os_image}"
+  mkdir -p "$ASSETS_DIR/$vm_name"
   # Delete the existing OS image if it exists
   if [[ -f "$dest" ]]; then
     rm -f "$dest"
@@ -101,17 +101,17 @@ function generate_host() {
   echo "Processing host: $name with IP: $ip (OS: $os_name, bridge: $bridge${vlan:+, vlan: $vlan})"
 
   # generate config files for cloud-init to config folder
-  local config_dir="$name/config"
+  local config_dir="$ASSETS_DIR/$name/config"
   mkdir -p "$config_dir"
 
   local os_user_data_tpl="${os_name}_user-data.j2"
   local os_network_tpl="${os_name}_network-config.j2"
-  render_j2 "${ROOT_DIR}/tpls/meta-data.j2"        "$config_dir/meta-data" "name=$name"
-  render_j2 "${ROOT_DIR}/tpls/${os_user_data_tpl}" "$config_dir/user-data" "user=$default_user" "pass=$default_pass" "name=$name"
-  render_j2 "${ROOT_DIR}/tpls/${os_network_tpl}"   "$config_dir/network-config" "ip=$ip" "gateway=$gateway" "name=$name"
+  render_j2 "${TPLS_DIR}/meta-data.j2"        "$config_dir/meta-data" "name=$name"
+  render_j2 "${TPLS_DIR}/${os_user_data_tpl}" "$config_dir/user-data" "user=$default_user" "pass=$default_pass" "name=$name"
+  render_j2 "${TPLS_DIR}/${os_network_tpl}"   "$config_dir/network-config" "ip=$ip" "gateway=$gateway" "name=$name"
 
   # generate iso image with cloud-init config files
-  local seed_img="$name/seed.img"
+  local seed_img="$ASSETS_DIR/$name/seed.img"
   # Delete the existing seed image if it exists
   if [[ -f "${seed_img}" ]]; then
     rm -f "${seed_img}"
@@ -124,12 +124,12 @@ function generate_host() {
   echo ""
 
   # generate storage file if it doesn't exist
-  if [[ ! -f "$name/data.qcow2" ]]; then
-    qemu-img create -f qcow2 "$name/data.qcow2" "$default_storage_size"
-    echo "Generated storage file for $name at $name/data.qcow2 with size $default_storage_size"
-    format_data_disk "$name/data.qcow2"
+  if [[ ! -f "${name}-data.qcow2" ]]; then
+    qemu-img create -f qcow2 "${name}-data.qcow2" "$default_storage_size"
+    echo "Generated storage file for $name at ${name}-data.qcow2 with size $default_storage_size"
+    format_data_disk "${name}-data.qcow2"
   else
-    echo "Storage file already exists for $name at $name/data.qcow2 — preserved"
+    echo "Storage file already exists for $name at ${name}-data.qcow2 — preserved"
     echo ""
   fi
 }
