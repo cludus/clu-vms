@@ -32,13 +32,15 @@ function do_start() {
       do_download "$@"
       ;;
     gen-cloud-init)
-      local templates_inc="$bin_dir/inc/templates"
-      if [[ ! -f "$templates_inc" ]]; then
-        echo "Error: Compiled templates file $templates_inc not found. Please run ./bin/compile first."
-        exit 1
+      if [[ -z "${CVMS_TEMPLATE_META_DATA:-}" || -z "${CVMS_TEMPLATE_ALPINE_USER_DATA:-}" || -z "${CVMS_TEMPLATE_ALPINE_NETWORK_CONF:-}" ]]; then
+        local templates_inc="$bin_dir/inc/templates"
+        if [[ ! -f "$templates_inc" ]]; then
+          echo "Error: Compiled templates file $templates_inc not found. Please run ./bin/compile first."
+          exit 1
+        fi
+        source "$templates_inc"
       fi
 
-      source "$templates_inc"
       do_gen-cloud-init "$@"
       ;;
     run-cloud-init)
