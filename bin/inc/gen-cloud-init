@@ -85,9 +85,6 @@ function generate_host() {
   local default_os="$4"
   local default_bridge="$5"
   local default_storage_size="$6"
-  local meta_data_tpl_content="$7"
-  local user_data_tpl_content="$8"
-  local network_cfg_tpl_content="$9"
   local name=$(echo "$host" | yq '.name')
   local ip=$(echo "$host" | yq '.ip')
   # Per-host bridge override; falls back to the default bridge from vms.yml
@@ -107,9 +104,9 @@ function generate_host() {
   local config_dir="$ASSETS_DIR/$name/config"
   mkdir -p "$config_dir"
 
-  render_j2_content "$meta_data_tpl_content"   "$config_dir/meta-data" "name=$name"
-  render_j2_content "$user_data_tpl_content"   "$config_dir/user-data" "user=$default_user" "pass=$default_pass" "name=$name"
-  render_j2_content "$network_cfg_tpl_content" "$config_dir/network-config" "ip=$ip" "gateway=$gateway" "name=$name"
+  render_j2_content "$CVMS_TEMPLATE_META_DATA"          "$config_dir/meta-data" "name=$name"
+  render_j2_content "$CVMS_TEMPLATE_ALPINE_USER_DATA"   "$config_dir/user-data" "user=$default_user" "pass=$default_pass" "name=$name"
+  render_j2_content "$CVMS_TEMPLATE_ALPINE_NETWORK_CONF" "$config_dir/network-config" "ip=$ip" "gateway=$gateway" "name=$name"
 
   # generate iso image with cloud-init config files
   local seed_img="$ASSETS_DIR/$name/seed.img"
@@ -136,15 +133,11 @@ function generate_host() {
 }
 
 function do_gen-cloud-init() {
-  local meta_data_tpl_content="$1"
-  local user_data_tpl_content="$2"
-  local network_cfg_tpl_content="$3"
-
   echo "Generating cloud-init configuration for all hosts defined in vms.yml..."
   echo ""
 
-  if [[ -z "$meta_data_tpl_content" || -z "$user_data_tpl_content" || -z "$network_cfg_tpl_content" ]]; then
-    echo "Error: Missing template content arguments."
+  if [[ -z "${CVMS_TEMPLATE_META_DATA:-}" || -z "${CVMS_TEMPLATE_ALPINE_USER_DATA:-}" || -z "${CVMS_TEMPLATE_ALPINE_NETWORK_CONF:-}" ]]; then
+    echo "Error: Missing compiled template content. Please run ./bin/compile and try again."
     exit 1
   fi
 
@@ -172,6 +165,6 @@ function do_gen-cloud-init() {
 
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
-    generate_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$default_storage_size" "$meta_data_tpl_content" "$user_data_tpl_content" "$network_cfg_tpl_content"
+    generate_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$default_storage_size"
   done
 }
