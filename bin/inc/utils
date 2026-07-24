@@ -27,6 +27,34 @@ with open(out_path, "w") as f:
 ' "$tpl_path" "$out_path" "$@"
 }
 
+# Renders a Jinja2 template string to a file.
+# First argument is the template content, second argument is the output file
+# path, and the rest are key=value pairs used as render context.
+function render_j2_content() {
+  # Check for Python jinja2 module
+  if ! python3 -c "import jinja2" &> /dev/null; then
+    echo "Error: Python jinja2 module is not installed. Please run: pip install jinja2"
+    exit 1
+  fi
+
+  local tpl_content="$1"
+  local out_path="$2"
+  shift 2
+
+  python3 -c '
+import jinja2, sys
+tpl_content = sys.argv[1]
+out_path = sys.argv[2]
+ctx = {}
+for arg in sys.argv[3:]:
+    k, v = arg.split("=", 1)
+    ctx[k] = v
+tpl = jinja2.Template(tpl_content)
+with open(out_path, "w") as f:
+    f.write(tpl.render(**ctx))
+' "$tpl_content" "$out_path" "$@"
+}
+
 # Checks that the bridge interface used for qemu networking exists on the host.
 # Bridge configuration is read from vms.yml:
 #   bridge:

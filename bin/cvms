@@ -32,7 +32,25 @@ function do_start() {
       do_download "$@"
       ;;
     gen-cloud-init)
-      do_gen-cloud-init "$@"
+      local meta_tpl_path="$TPLS_DIR/meta-data.j2"
+      local user_tpl_path="$TPLS_DIR/alpine_user-data.j2"
+      local network_tpl_path="$TPLS_DIR/alpine_network-config.j2"
+
+      for tpl in "$meta_tpl_path" "$user_tpl_path" "$network_tpl_path"; do
+        if [[ ! -f "$tpl" ]]; then
+          echo "Error: Template file $tpl not found."
+          exit 1
+        fi
+      done
+
+      local meta_tpl_content
+      local user_tpl_content
+      local network_tpl_content
+      meta_tpl_content=$(cat "$meta_tpl_path")
+      user_tpl_content=$(cat "$user_tpl_path")
+      network_tpl_content=$(cat "$network_tpl_path")
+
+      do_gen-cloud-init "$meta_tpl_content" "$user_tpl_content" "$network_tpl_content" "$@"
       ;;
     run-cloud-init)
       do_run-cloud-init "$@"
