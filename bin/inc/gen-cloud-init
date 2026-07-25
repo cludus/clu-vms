@@ -11,73 +11,6 @@ function gen-cloud-init_help() {
   echo ""
 }
 
-function copy_base_os_image() {
-  local vm_name="$1"
-  local os_name="alpine"
-  local os_image="$os_name.img"
-
-  local source_dir="$ASSETS_DIR/imgs"
-  local source_file="${source_dir}/${os_image}"
-  if [[ ! -f "$source_file" ]]; then
-    echo "Error: Base OS image $source_file not found. Please run the download command first."
-    exit 1
-  fi
-
-  local dest="$ASSETS_DIR/${vm_name}/${os_image}"
-  mkdir -p "$ASSETS_DIR/$vm_name"
-  # Delete the existing OS image if it exists
-  if [[ -f "$dest" ]]; then
-    rm -f "$dest"
-  fi
-  cp "$source_file" "$dest"
-
-  echo "$os_name"
-}
-
-# Partition and format a qcow2 data disk with a single ext4 partition via NBD.
-# Usage: format_data_disk <qcow2_path>
-function format_data_disk() {
-  local disk="$1"
-
-  # Find a free nbd device
-  local nbd_dev=""
-  for nbd in /dev/nbd[0-9]*; do
-    local idx="${nbd#/dev/nbd}"
-    local size_file="/sys/class/block/nbd${idx}/size"
-    if [[ -f "$size_file" ]]; then
-      local sz
-      sz=$(cat "$size_file" 2>/dev/null)
-      if [[ "$sz" == "0" ]]; then
-        nbd_dev="$nbd"
-        break
-      fi
-    fi
-  done
-
-  if [[ -z "$nbd_dev" ]]; then
-    echo "Warning: No free nbd device found; skipping partition/format of $disk"
-    return 0
-  fi
-
-  echo "Formatting $disk as ext4 via $nbd_dev..."
-
-  sudo modprobe nbd max_part=8
-  sudo qemu-nbd -c "$nbd_dev" "$disk"
-
-  # Wait briefly for the kernel to see the device
-  sleep 0.5
-
-  echo 'label: gpt' | sudo sfdisk "$nbd_dev"
-  echo ';'        | sudo sfdisk "$nbd_dev"
-
-  # Format the first partition (sfdisk with ';' fills the whole disk as partition 1)
-  sudo mkfs.ext4 -F "${nbd_dev}p1"
-
-  sudo qemu-nbd -d "$nbd_dev"
-  echo "Formatted $disk successfully."
-  echo ""
-}
-
 function generate_host() {
   local host="$1"
   local default_user="$2"
@@ -97,7 +30,7 @@ function generate_host() {
   # Derive gateway from IP (replace last octet with .1)
   local gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
 
-  local os_name=$(copy_base_os_image "$name")
+  local os_name=$(copy_base_os_image "$name" "$default_os")
   echo "Processing host: $name with IP: $ip (OS: $os_name, bridge: $bridge${vlan:+, vlan: $vlan})"
 
   # generate config files for cloud-init to config folder
