@@ -1,0 +1,31 @@
+# Keyboard configuration
+KEYMAPOPTS="us us"
+
+# Hostname configuration
+HOSTNAMEOPTS="-n alpine-server"
+
+# Network configuration
+INTERFACESOPTS="auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+address 10.146.101.56/24
+gateway 10.146.101.1"
+
+# DNS and Proxy configuration
+DNSOPTS="1.1.1.1 8.8.8.8"
+PROXYOPTS="none"
+
+# Timezone and NTP
+TIMEZONEOPTS="-z UTC"
+NTPOPTS="chrony"
+
+# Package repository mirror (f automatically picks the fastest)
+APKPOSTOPTS="-f"
+
+# SSH Service
+SSHDOPTS="-c openssh"
+
+# Disk installation settings (Installs to /dev/sda in traditional 'sys' mode)
+DISKOPTS="-m sys /dev/vda"
