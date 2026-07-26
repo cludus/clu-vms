@@ -42,7 +42,7 @@ and on having a Flatcar image to test against.
 
 ---
 
-## Phase 1 — Template & Compile Infrastructure
+## Phase 1 — Template & Compile Infrastructure [COMPLETED]
 
 **Goal:** Create the Flatcar Butane Jinja2 template and extend `./bin/compile`
 to embed it alongside the existing cloud-init templates.

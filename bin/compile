@@ -71,8 +71,9 @@ function do_compile() {
   local meta_tpl_path="$tpls_dir/meta-data.j2"
   local user_tpl_path="$tpls_dir/alpine_user-data.j2"
   local network_tpl_path="$tpls_dir/alpine_network-config.j2"
+  local flatcar_butane_tpl_path="$tpls_dir/flatcar_butane.j2"
 
-  for tpl in "$meta_tpl_path" "$user_tpl_path" "$network_tpl_path"; do
+  for tpl in "$meta_tpl_path" "$user_tpl_path" "$network_tpl_path" "$flatcar_butane_tpl_path"; do
     if [[ ! -f "$tpl" ]]; then
       echo "Error: Template file $tpl not found."
       exit 1
@@ -82,10 +83,11 @@ function do_compile() {
   local meta_tpl_content
   local user_tpl_content
   local network_tpl_content
+  local flatcar_butane_tpl_content
   meta_tpl_content=$(cat "$meta_tpl_path")
   user_tpl_content=$(cat "$user_tpl_path")
   network_tpl_content=$(cat "$network_tpl_path")
-  flatcar_butane_tpl_content=$(cat "$tpls_dir/flatcar_butane.j2")
+  flatcar_butane_tpl_content=$(cat "$flatcar_butane_tpl_path")
 
   {
     echo "#!/usr/bin/env bash"

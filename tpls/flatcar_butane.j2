@@ -4,8 +4,16 @@ passwd:
   users:
     - name: {{ user }}
       password_hash: "{{ password_hash }}"
+      ssh_authorized_keys:
+{% for key in ssh_authorized_keys %}
+        - "{{ key }}"
+{% endfor %}
 storage:
   files:
+    - path: /etc/hostname
+      contents:
+        inline: |
+          {{ name }}
     - path: /etc/systemd/network/static.network
       contents:
         inline: |
@@ -15,12 +23,13 @@ storage:
           [Network]
           Address={{ ip }}/24
           Gateway={{ gateway }}
-          DNS=1.1.1.1
-          DNS=8.8.8.8
+{% for dns in dns_servers %}
+          DNS={{ dns }}
+{% endfor %}
   filesystems:
-    - device: /dev/vdb
+    - device: {{ data_disk_device }}
       format: ext4
-      path: /var/lib/docker
+      path: {{ data_disk_mount }}
       with_mount_unit: true
 systemd:
   units:
