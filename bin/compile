@@ -26,7 +26,7 @@ function append_file_without_shebang() {
 
 function build_dist_cvms() {
   mkdir -p "$dist_dir"
-  rm -f "$dist_dir/cmvs"
+  rm -f "$dist_dir/cvms"
 
   local required_files=(
     "$cvms_file"
@@ -85,6 +85,7 @@ function do_compile() {
   meta_tpl_content=$(cat "$meta_tpl_path")
   user_tpl_content=$(cat "$user_tpl_path")
   network_tpl_content=$(cat "$network_tpl_path")
+  flatcar_butane_tpl_content=$(cat "$tpls_dir/flatcar_butane.j2")
 
   {
     echo "#!/usr/bin/env bash"
@@ -93,6 +94,7 @@ function do_compile() {
     printf 'CVMS_TEMPLATE_META_DATA=%q\n' "$meta_tpl_content"
     printf 'CVMS_TEMPLATE_ALPINE_USER_DATA=%q\n' "$user_tpl_content"
     printf 'CVMS_TEMPLATE_ALPINE_NETWORK_CONF=%q\n' "$network_tpl_content"
+    printf 'CVMS_TEMPLATE_FLATCAR_BUTANE=%q\n' "$flatcar_butane_tpl_content"
   } > "$out_file"
 
   echo "Generated $out_file"

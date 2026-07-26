@@ -1,0 +1,46 @@
+variant: flatcar
+version: 1.0.0
+passwd:
+  users:
+    - name: {{ user }}
+      password_hash: "{{ password_hash }}"
+storage:
+  files:
+    - path: /etc/systemd/network/static.network
+      contents:
+        inline: |
+          [Match]
+          Name=eth0
+
+          [Network]
+          Address={{ ip }}/24
+          Gateway={{ gateway }}
+          DNS=1.1.1.1
+          DNS=8.8.8.8
+  filesystems:
+    - device: /dev/vdb
+      format: ext4
+      path: /var/lib/docker
+      with_mount_unit: true
+systemd:
+  units:
+    - name: docker.service
+      enabled: true
+    - name: portainer.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Portainer
+        After=docker.service
+        Requires=docker.service
+
+        [Service]
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker kill portainer
+        ExecStartPre=-/usr/bin/docker rm portainer
+        ExecStartPre=/usr/bin/docker pull portainer/portainer-ce:latest
+        ExecStart =/usr/bin/docker run --name portainer -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
+        ExecStop=/usr/bin/docker stop portainer
+
+        [Install]
+        WantedBy=multi-user.target

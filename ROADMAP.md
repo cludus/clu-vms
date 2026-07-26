@@ -65,6 +65,7 @@ to Phase 6, after those scripts exist.
 | Variable | Source |
 |---|---|
 | `{{ name }}` | `host.name` |
+| `{{ password_hash }}` | generated from `defaults.pass` |
 | `{{ ip }}` | `host.ip` |
 | `{{ gateway }}` | derived from `host.ip` (replace last octet with `.1`) |
 | `{{ dns_servers }}` | hardcoded `8.8.8.8, 1.1.1.1` (or from `vms.yml` defaults) |
