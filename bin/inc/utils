@@ -216,8 +216,8 @@ function format_data_disk() {
 }
 
 function copy_base_os_image() {
-  local vm_name="$1"
-  local os_name="${2:-alpine}"  # Default to "alpine" if not provided
+  local os_name="${1:-alpine}"  # Default to "alpine" if not provided
+  local vm_name="$2"
   local os_image="$os_name.img"
 
   local source_dir="$ASSETS_DIR/imgs"

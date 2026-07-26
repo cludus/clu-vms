@@ -8,7 +8,7 @@ Flatcar Container Linux VMs managed through the same `cvms` entrypoint.
 
 ---
 
-## Phase 0 — Foundation: Shared Helpers & Flatcar Image
+## Phase 0 — Foundation: Shared Helpers & Flatcar Image [COMPLETED]
 
 **Goal:** Refactor hardcoded helpers into `bin/inc/utils` so they can be
 reused by both cloud-init and Flatcar generators. Also ensure the Flatcar

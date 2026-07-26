@@ -30,7 +30,7 @@ function generate_host() {
   # Derive gateway from IP (replace last octet with .1)
   local gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
 
-  local os_name=$(copy_base_os_image "$name" "$default_os")
+  local os_name=$(copy_base_os_image "$default_os" "$name")
   echo "Processing host: $name with IP: $ip (OS: $os_name, bridge: $bridge${vlan:+, vlan: $vlan})"
 
   # generate config files for cloud-init to config folder
