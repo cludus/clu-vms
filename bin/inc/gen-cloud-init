@@ -92,12 +92,17 @@ function do_gen-cloud-init() {
   local default_os=$(yq '.defaults.os' vms.yml)
   local default_bridge=$(yq '.defaults.bridge' vms.yml)
   local default_storage_size=$(yq '.defaults.storage_size' vms.yml)
+  local default_ssh_keys_len
+  default_ssh_keys_len=$(yq '.defaults.ssh_authorized_keys // [] | length' vms.yml)
 
   # Ensure the bridge used for qemu networking exists on the host before generating any per-VM configuration.
   check_bridge
 
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
+    if ! validate_host_auth_config "$host" "$default_os" "$default_pass" "$default_ssh_keys_len"; then
+      exit 1
+    fi
     generate_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$default_storage_size"
   done
 }

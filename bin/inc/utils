@@ -55,6 +55,53 @@ with open(out_path, "w") as f:
 ' "$tpl_content" "$out_path" "$@"
 }
 
+# Validate host authentication settings by effective OS.
+# - flatcar: requires pass OR at least one ssh_authorized_key.
+# - non-flatcar: requires a non-empty pass.
+function validate_host_auth_config() {
+  local host_json="$1"
+  local default_os="$2"
+  local default_pass="$3"
+  local default_ssh_keys_len="${4:-0}"
+
+  local host_name host_os effective_os host_pass effective_pass
+  local host_ssh_keys_len effective_ssh_keys_len
+
+  host_name=$(echo "$host_json" | yq '.name // ""')
+  host_os=$(echo "$host_json" | yq '.os // ""')
+  effective_os="$host_os"
+  if [[ -z "$effective_os" || "$effective_os" == "null" ]]; then
+    effective_os="$default_os"
+  fi
+
+  host_pass=$(echo "$host_json" | yq '.pass // ""')
+  effective_pass="$host_pass"
+  if [[ -z "$effective_pass" || "$effective_pass" == "null" ]]; then
+    effective_pass="$default_pass"
+  fi
+
+  host_ssh_keys_len=$(echo "$host_json" | yq '.ssh_authorized_keys // [] | length')
+  effective_ssh_keys_len="$host_ssh_keys_len"
+  if [[ "$effective_ssh_keys_len" -eq 0 ]]; then
+    effective_ssh_keys_len="$default_ssh_keys_len"
+  fi
+
+  if [[ "$effective_os" == "flatcar" ]]; then
+    if [[ -z "$effective_pass" || "$effective_pass" == "null" ]] && [[ "$effective_ssh_keys_len" -eq 0 ]]; then
+      echo "Error: Host '$host_name' (os=flatcar) must define at least one authentication method: pass or ssh_authorized_keys."
+      return 1
+    fi
+    return 0
+  fi
+
+  if [[ -z "$effective_pass" || "$effective_pass" == "null" ]]; then
+    echo "Error: Host '$host_name' (os=$effective_os) must define a non-empty pass."
+    return 1
+  fi
+
+  return 0
+}
+
 # Checks that the bridge interface used for qemu networking exists on the host.
 # Bridge configuration is read from vms.yml:
 #   bridge:

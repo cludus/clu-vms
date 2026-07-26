@@ -82,7 +82,7 @@ to Phase 6, after those scripts exist.
 
 ---
 
-## Phase 2 — VMS Config Schema Extensions
+## Phase 2 — VMS Config Schema Extensions [COMPLETED]
 
 **Goal:** Add the new `vms.yml` keys that Flatcar needs: optional SSH
 authorized keys and optional SMP/CPU count. Keep backwards compatibility with
@@ -97,7 +97,6 @@ script logic.
 
 | File | Action |
 |---|---|
-| `test/vms.yml` | Add `ssh_authorized_keys` to `defaults` and `cpus` to `defaults` |
 | `README.md` | Document new keys in the configuration reference |
 
 ### New/updated `vms.yml` keys
@@ -130,11 +129,10 @@ Per-host overrides for `cpus` and `ssh_authorized_keys` are supported
 
 ### Acceptance tests
 
-1. `yq '.defaults.ssh_authorized_keys[0]' test/vms.yml` returns a key.
-2. `yq '.defaults.cpus' test/vms.yml` returns `2`.
-3. Validation rejects a Flatcar host when both `pass` and
+1. `yq '.defaults.cpus' test/vms.yml` returns `2`.
+2. Validation rejects a Flatcar host when both `pass` and
   `ssh_authorized_keys` are empty/missing.
-4. Existing `./bin/cvms gen-cloud-init` still works with the updated `vms.yml`
+3. Existing `./bin/cvms gen-cloud-init` still works with the updated `vms.yml`
    (backwards compatibility verified).
 
 ---

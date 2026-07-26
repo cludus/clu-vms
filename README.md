@@ -40,11 +40,14 @@ A `vms.yml` file defines defaults, bridge networking, and hosts:
 ```yaml
 defaults:
   user: alpine          # username
-  pass: changeme        # password
+  pass: changeme        # password (optional for flatcar if ssh_authorized_keys is set)
   os: alpine            # default OS for VMs
   bridge: vmbr0         # default bridge
-  memory: 2G            # RAM per VM
-  storage_size: 100G    # data disk size
+  memory: 2G            # RAM per VM (optional, defaults to 2G)
+  storage_size: 100G    # data disk size (optional, defaults to 100G)
+  cpus: 2               # number of vCPUs (optional, defaults to 2)
+  ssh_authorized_keys:  # optional SSH public keys list
+    - "ssh-rsa AAAAB3..."
 
 bridge:
   name: vmbr0           # bridge interface name
@@ -59,7 +62,11 @@ hosts:
     ip: 192.168.100.202
 ```
 
-Per-host overrides for `bridge`, `memory`, and `vlan` are supported.
+Per-host overrides for `bridge`, `memory`, `vlan`, `cpus`, and
+`ssh_authorized_keys` are supported.
+
+For Flatcar hosts, at least one authentication method must be configured:
+either a non-empty `pass` or at least one `ssh_authorized_keys` entry.
 
 ## Assets Directory
 
