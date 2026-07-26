@@ -160,20 +160,34 @@ OS image copy, Butane YAML → Ignition JSON compilation, and data disk creation
 5. For each host where `os == "flatcar"` (or `defaults.os == "flatcar"`):
   - Validate authentication config: host must resolve to either a non-empty
     password or at least one SSH authorized key.
+  - Resolve `data_disk_device` and `data_disk_mount` for Butane rendering
+    (Phase 3 source of truth: fixed defaults `/dev/vdb` and
+    `/var/lib/docker`; later schema support can override).
+  - Validate resolved `data_disk_device` and `data_disk_mount` are non-empty
+    before rendering template.
    - Copy `.assets/imgs/flatcar.img` → `.assets/<host>/flatcar.img` (via shared `copy_base_os_image`).
    - Render Jinja2 template → `.assets/<host>/config/flatcar.yaml`.
    - Compile with `butane --pretty --strict` → `.assets/<host>/config/flatcar.ign`.
    - Create `<host>-data.qcow2` if missing (raw, **no** `format_data_disk` — Butane handles formatting).
+
+### Phase boundary note
+
+- `data_disk_device` and `data_disk_mount` are Flatcar-only template inputs.
+  They are handled in `gen-flatcar` (Phase 3) and must not change
+  cloud-init generation behavior.
 
 ### Acceptance tests
 
 1. Create a test `vms.yml` with a flatcar host. Run `./bin/cvms gen-flatcar`.
 2. Verify `.assets/<host>/flatcar.img` is a copy of `.assets/imgs/flatcar.img`.
 3. Verify `.assets/<host>/config/flatcar.yaml` is rendered with correct values.
-4. Verify `.assets/<host>/config/flatcar.ign` is valid JSON (Butane output).
-5. Verify `<host>-data.qcow2` exists with correct size.
-6. Run `bash -n bin/inc/gen-flatcar bin/cvms`.
-7. Run `./bin/cvms gen-cloud-init` — verify no regression.
+4. Verify rendered `flatcar.yaml` contains expected filesystem values
+  (`device: /dev/vdb`, `path: /var/lib/docker`) unless overridden by a later
+  schema extension.
+5. Verify `.assets/<host>/config/flatcar.ign` is valid JSON (Butane output).
+6. Verify `<host>-data.qcow2` exists with correct size.
+7. Run `bash -n bin/inc/gen-flatcar bin/cvms`.
+8. Run `./bin/cvms gen-cloud-init` — verify no regression.
 
 ---
 
