@@ -97,6 +97,9 @@ function do_run-cloud-init() {
   local default_bridge=$(yq '.defaults.bridge' vms.yml)
   local default_memory=$(yq '.defaults.memory' vms.yml)
 
+  # Ensure the bridge used for qemu networking exists on the host before launching any VMs.
+  check_bridge
+
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
     cloud_init_process_host "$host" "$default_os" "$foreground" "$default_bridge" "$default_memory"

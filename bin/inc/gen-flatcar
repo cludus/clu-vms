@@ -147,8 +147,6 @@ function do_gen-flatcar() {
   local default_ssh_keys_len
   default_ssh_keys_len=$(yq '.defaults.ssh_authorized_keys // [] | length' vms.yml)
 
-  check_bridge
-
   local host_count=0
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
