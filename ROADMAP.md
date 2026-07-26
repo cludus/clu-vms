@@ -176,7 +176,7 @@ OS image copy, Butane YAML → Ignition JSON compilation, and data disk creation
 
 ### Acceptance tests
 
-1. Create a test `vms.yml` with a flatcar host. Run `./bin/cvms gen-flatcar`.
+1. Run `./bin/cvms gen-flatcar` from test folder.
 2. Verify `.assets/<host>/flatcar.img` is a copy of `.assets/imgs/flatcar.img`.
 3. Verify `.assets/<host>/config/flatcar.yaml` is rendered with correct values.
 4. Verify rendered `flatcar.yaml` contains expected filesystem values

@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+
+ROOT_SCRIPT="${ROOT_SCRIPT:-cvms}"
+ASSETS_DIR="${ASSETS_DIR:-.assets}"
+
+function gen-flatcar_help() {
+  echo "======================="
+  echo "Generate Flatcar Configuration"
+  echo "  Usage: $ROOT_SCRIPT gen-flatcar"
+  echo "  Generates Flatcar assets."
+  echo ""
+}
+
+function generate_flatcar_host() {
+  local host="$1"
+  local default_user="$2"
+  local default_pass="$3"
+  local default_bridge="$4"
+  local default_storage_size="$5"
+  local default_dns_servers="$6"
+
+  local name ip bridge gateway
+  name=$(echo "$host" | yq '.name')
+  ip=$(echo "$host" | yq '.ip')
+  bridge=$(echo "$host" | yq '.bridge // ""')
+  if [[ -z "$bridge" ]]; then
+    bridge="$default_bridge"
+  fi
+  gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
+
+  local os_name
+  os_name=$(copy_base_os_image "flatcar" "$name")
+  echo "Processing host: $name with IP: $ip (OS: flatcar, bridge: $bridge)"
+
+  # ── Resolve effective authentication ────────────────────────────────
+  local effective_pass effective_ssh_keys_json password_hash
+  effective_pass=$(echo "$host" | yq '.pass // ""')
+  if [[ -z "$effective_pass" || "$effective_pass" == "null" ]]; then
+    effective_pass="$default_pass"
+  fi
+
+  effective_ssh_keys_json=$(echo "$host" | yq -o=json -I=0 '.ssh_authorized_keys // []')
+  if [[ "$effective_ssh_keys_json" == "[]" || "$effective_ssh_keys_json" == "null" ]]; then
+    effective_ssh_keys_json=$(yq -o=json -I=0 '.defaults.ssh_authorized_keys // []' vms.yml 2>/dev/null)
+    if [[ -z "$effective_ssh_keys_json" || "$effective_ssh_keys_json" == "null" ]]; then
+      effective_ssh_keys_json="[]"
+    fi
+  fi
+
+  password_hash="null"
+  if [[ -n "$effective_pass" && "$effective_pass" != "null" ]]; then
+    password_hash=$(hash_password "$effective_pass")
+    password_hash=$(json_str "$password_hash")
+  fi
+
+  # ── Resolve DNS servers ─────────────────────────────────────────────
+  local dns_servers_json
+  dns_servers_json=$(echo "$host" | yq -o=json -I=0 '.dns_servers // []' 2>/dev/null)
+  if [[ "$dns_servers_json" == "[]" || "$dns_servers_json" == "null" ]]; then
+    dns_servers_json="$default_dns_servers"
+  fi
+
+  # ── Data disk ──────────────────────────
+  local data_disk_device_json data_disk_mount_json
+  data_disk_device_json=$(json_str "/dev/vdb")
+  data_disk_mount_json=$(json_str "/var/lib/docker")
+
+  # ── Render Butane YAML ──────────────────────────────────────────────
+  local config_dir="$ASSETS_DIR/$name/config"
+  mkdir -p "$config_dir"
+
+  local butane_yaml="$config_dir/flatcar.yaml"
+  render_j2_content_json "$CVMS_TEMPLATE_FLATCAR_BUTANE" "$butane_yaml" \
+    "name=$(json_str "$name")" \
+    "user=$(json_str "$default_user")" \
+    "password_hash=$password_hash" \
+    "ip=$(json_str "$ip")" \
+    "gateway=$(json_str "$gateway")" \
+    "dns_servers=$dns_servers_json" \
+    "ssh_authorized_keys=$effective_ssh_keys_json" \
+    "data_disk_device=$data_disk_device_json" \
+    "data_disk_mount=$data_disk_mount_json"
+
+  echo "Generated Butane config for $name at $butane_yaml"
+
+  # ── Compile Butane → Ignition ───────────────────────────────────────
+  local ignition_json="$config_dir/flatcar.ign"
+  if ! butane --pretty --strict "$butane_yaml" > "$ignition_json"; then
+    echo "Error: butane compilation failed for $name. Check $butane_yaml for syntax errors."
+    exit 1
+  fi
+  echo "Generated Ignition config for $name at $ignition_json"
+
+  # ── Create raw data disk (no format — Butane handles it) ────────────
+  if [[ ! -f "${name}-data.qcow2" ]]; then
+    qemu-img create -f qcow2 "${name}-data.qcow2" "$default_storage_size"
+    echo "Generated storage file for $name at ${name}-data.qcow2 with size $default_storage_size"
+    echo ""
+  else
+    echo "Storage file already exists for $name at ${name}-data.qcow2 — preserved"
+    echo ""
+  fi
+}
+
+function do_gen-flatcar() {
+  echo "Generating Flatcar configuration for all flatcar hosts defined in vms.yml..."
+  echo ""
+
+  if [[ -z "${CVMS_TEMPLATE_FLATCAR_BUTANE:-}" ]]; then
+    echo "Error: Missing compiled template content (CVMS_TEMPLATE_FLATCAR_BUTANE). Please run ./bin/compile and try again."
+    exit 1
+  fi
+
+  if [[ ! -f "vms.yml" ]]; then
+    echo "Error: vms.yml not found in the current directory."
+    exit 1
+  fi
+
+  # validate required tools
+  for tool in yq butane qemu-img; do
+    if ! command -v "$tool" &> /dev/null; then
+      echo "Error: $tool is not installed. Please install it and try again."
+      exit 1
+    fi
+  done
+
+  # validate base Flatcar image
+  if [[ ! -f "$ASSETS_DIR/imgs/flatcar.img" ]]; then
+    echo "Error: Base Flatcar image not found at $ASSETS_DIR/imgs/flatcar.img. Please run download first."
+    exit 1
+  fi
+
+  local default_os=$(yq '.defaults.os' vms.yml)
+  local default_user=$(yq '.defaults.user' vms.yml)
+  local default_pass=$(yq '.defaults.pass' vms.yml)
+  local default_bridge=$(yq '.defaults.bridge' vms.yml)
+  local default_storage_size=$(yq '.defaults.storage_size' vms.yml)
+
+  # Default DNS servers — vms.yml can override via defaults.dns_servers
+  local default_dns_servers='["8.8.8.8","1.1.1.1"]'
+  local dns_override
+  dns_override=$(yq -o=json -I=0 '.defaults.dns_servers // []' vms.yml 2>/dev/null)
+  if [[ -n "$dns_override" && "$dns_override" != "[]" && "$dns_override" != "null" ]]; then
+    default_dns_servers="$dns_override"
+  fi
+
+  local default_ssh_keys_len
+  default_ssh_keys_len=$(yq '.defaults.ssh_authorized_keys // [] | length' vms.yml)
+
+  check_bridge
+
+  local host_count=0
+  readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
+  for host in "${hosts[@]}"; do
+    # Determine effective OS (host override → default)
+    local host_os
+    host_os=$(echo "$host" | yq '.os // ""')
+    if [[ -z "$host_os" || "$host_os" == "null" ]]; then
+      host_os="$default_os"
+    fi
+
+    # Only process flatcar hosts
+    if [[ "$host_os" != "flatcar" ]]; then
+      echo "Skipping host with OS $host_os (not flatcar)"
+      continue
+    fi
+
+    if ! validate_host_auth_config "$host" "$default_os" "$default_pass" "$default_ssh_keys_len"; then
+      exit 1
+    fi
+
+    generate_flatcar_host "$host" "$default_user" "$default_pass" "$default_bridge" "$default_storage_size" "$default_dns_servers"
+    host_count=$((host_count + 1))
+  done
+
+  if [[ $host_count -eq 0 ]]; then
+    echo "No flatcar hosts found in vms.yml (defaults.os=$default_os, or hosts without os override)"
+  fi
+}

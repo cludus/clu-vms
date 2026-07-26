@@ -58,6 +58,115 @@ with open(out_path, "w") as f:
 ' "$tpl_content" "$out_path" "$@"
 }
 
+# Renders a Jinja2 template string to a file using JSON-encoded context values.
+# First argument is the template content, second argument is the output file
+# path, and the rest are key=json_value pairs. Each value MUST be valid JSON
+# (e.g. "string", 42, ["a","b"], {"key":"val"}). This variant supports lists
+# and other complex types that render_j2_content cannot express via plain
+# key=value strings.
+function render_j2_content_json() {
+  if ! python3 -c "import jinja2" &> /dev/null; then
+    echo "Error: Python jinja2 module is not installed. Please run: pip install jinja2"
+    exit 1
+  fi
+
+  local tpl_content="$1"
+  local out_path="$2"
+  shift 2
+
+  python3 -c '
+import jinja2, sys, json
+tpl_content = sys.argv[1]
+out_path = sys.argv[2]
+ctx = {}
+for arg in sys.argv[3:]:
+    k, v = arg.split("=", 1)
+    ctx[k] = json.loads(v)
+tpl = jinja2.Template(tpl_content)
+with open(out_path, "w") as f:
+    f.write(tpl.render(**ctx))
+' "$tpl_content" "$out_path" "$@"
+}
+
+# Utility: encode a raw string as a JSON string (with quotes).
+# Usage: v=$(json_str "hello world")  =>  "hello world"
+function json_str() {
+  python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
+# Generate a SHA-512 password hash suitable for Flatcar Butane passwd.users.
+# Uses mkpasswd, openssl, or Python crypt (tried in that order).
+# Usage: ph=$(hash_password "changeme")
+function hash_password() {
+  local pass="$1"
+
+  if command -v mkpasswd &> /dev/null; then
+    mkpasswd -m sha-512 "$pass" 2>/dev/null && return 0
+  fi
+
+  if command -v openssl &> /dev/null; then
+    local h
+    h=$(openssl passwd -6 "$pass" 2>/dev/null) && { echo "$h"; return 0; }
+  fi
+
+  if python3 -c "import crypt" &> /dev/null; then
+    python3 -c "
+import crypt, sys
+print(crypt.crypt(sys.argv[1], crypt.mksalt(crypt.METHOD_SHA512)))
+" "$pass" 2>/dev/null && return 0
+  fi
+
+  echo "Error: Unable to hash password — install mkpasswd, openssl, or Python crypt module." >&2
+  exit 1
+}
+
+# Validate host authentication settings by effective OS.
+# - flatcar: requires pass OR at least one ssh_authorized_key.
+# - non-flatcar: requires a non-empty pass.
+function validate_host_auth_config() {
+  local host_json="$1"
+  local default_os="$2"
+  local default_pass="$3"
+  local default_ssh_keys_len="${4:-0}"
+
+  local host_name host_os effective_os host_pass effective_pass
+  local host_ssh_keys_len effective_ssh_keys_len
+
+  host_name=$(echo "$host_json" | yq '.name // ""')
+  host_os=$(echo "$host_json" | yq '.os // ""')
+  effective_os="$host_os"
+  if [[ -z "$effective_os" || "$effective_os" == "null" ]]; then
+    effective_os="$default_os"
+  fi
+
+  host_pass=$(echo "$host_json" | yq '.pass // ""')
+  effective_pass="$host_pass"
+  if [[ -z "$effective_pass" || "$effective_pass" == "null" ]]; then
+    effective_pass="$default_pass"
+  fi
+
+  host_ssh_keys_len=$(echo "$host_json" | yq '.ssh_authorized_keys // [] | length')
+  effective_ssh_keys_len="$host_ssh_keys_len"
+  if [[ "$effective_ssh_keys_len" -eq 0 ]]; then
+    effective_ssh_keys_len="$default_ssh_keys_len"
+  fi
+
+  if [[ "$effective_os" == "flatcar" ]]; then
+    if [[ -z "$effective_pass" || "$effective_pass" == "null" ]] && [[ "$effective_ssh_keys_len" -eq 0 ]]; then
+      echo "Error: Host '$host_name' (os=flatcar) must define at least one authentication method: pass or ssh_authorized_keys."
+      return 1
+    fi
+    return 0
+  fi
+
+  if [[ -z "$effective_pass" || "$effective_pass" == "null" ]]; then
+    echo "Error: Host '$host_name' (os=$effective_os) must define a non-empty pass."
+    return 1
+  fi
+
+  return 0
+}
+
 # Checks that the bridge interface used for qemu networking exists on the host.
 # Bridge configuration is read from vms.yml:
 #   bridge:
@@ -408,12 +517,17 @@ function do_gen-cloud-init() {
   local default_os=$(yq '.defaults.os' vms.yml)
   local default_bridge=$(yq '.defaults.bridge' vms.yml)
   local default_storage_size=$(yq '.defaults.storage_size' vms.yml)
+  local default_ssh_keys_len
+  default_ssh_keys_len=$(yq '.defaults.ssh_authorized_keys // [] | length' vms.yml)
 
   # Ensure the bridge used for qemu networking exists on the host before generating any per-VM configuration.
   check_bridge
 
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
+    if ! validate_host_auth_config "$host" "$default_os" "$default_pass" "$default_ssh_keys_len"; then
+      exit 1
+    fi
     generate_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$default_storage_size"
   done
 }
@@ -609,7 +723,7 @@ function do_stop() {
 CVMS_TEMPLATE_META_DATA=$'instance-id: {{ name }}\nlocal-hostname: {{ name }}'
 CVMS_TEMPLATE_ALPINE_USER_DATA=$'#cloud-config\nchpasswd:\n  expire: False\n\nusers:\n  - name: {{ user }}\n    lock_passwd: false\n    plain_text_passwd: {{ pass }}\n\npackage_update: true\npackages:\n- lsblk\n- util-linux\n- e2fsprogs-extra\n- sfdisk\n\nwrite_files:\n- path: /etc/resolv.conf\n  permissions: \'0644\'\n  owner: root:root\n  content: |\n    nameserver 8.8.8.8\n\nmounts:\n  - [ /dev/vdb1, /mnt, "ext4", "defaults,noatime", "0", "2" ]'
 CVMS_TEMPLATE_ALPINE_NETWORK_CONF=$'network:\n  version: 2\n  ethernets:\n    eth0:\n      dhcp4: no\n      addresses:\n        - {{ ip }}/24\n      gateway4: {{ gateway }}\n      nameservers:\n        addresses: [8.8.8.8]'
-CVMS_TEMPLATE_FLATCAR_BUTANE=$'variant: flatcar\nversion: 1.0.0\npasswd:\n  users:\n    - name: {{ user }}\n{% if password_hash %}\n      password_hash: "{{ password_hash }}"\n{% endif %}\n{% if ssh_authorized_keys and (ssh_authorized_keys | length) > 0 %}\n      ssh_authorized_keys:\n{% for key in ssh_authorized_keys %}\n        - "{{ key }}"\n{% endfor %}\n{% endif %}\nstorage:\n  files:\n    - path: /etc/hostname\n      contents:\n        inline: |\n          {{ name }}\n    - path: /etc/systemd/network/static.network\n      contents:\n        inline: |\n          [Match]\n          Name=eth0\n\n          [Network]\n          Address={{ ip }}/24\n          Gateway={{ gateway }}\n{% for dns in dns_servers %}\n          DNS={{ dns }}\n{% endfor %}\n  filesystems:\n    - device: {{ data_disk_device }}\n      format: ext4\n      path: {{ data_disk_mount }}\n      with_mount_unit: true\nsystemd:\n  units:\n    - name: docker.service\n      enabled: true\n    - name: portainer.service\n      enabled: true\n      contents: |\n        [Unit]\n        Description=Portainer\n        After=docker.service\n        Requires=docker.service\n\n        [Service]\n        TimeoutStartSec=0\n        ExecStartPre=-/usr/bin/docker kill portainer\n        ExecStartPre=-/usr/bin/docker rm portainer\n        ExecStartPre=/usr/bin/docker pull portainer/portainer-ce:latest\n        ExecStart =/usr/bin/docker run --name portainer -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest\n        ExecStop=/usr/bin/docker stop portainer\n\n        [Install]\n        WantedBy=multi-user.target'
+CVMS_TEMPLATE_FLATCAR_BUTANE=$'variant: flatcar\nversion: 1.0.0\npasswd:\n  users:\n    - name: {{ user }}\n{% if password_hash %}\n      password_hash: "{{ password_hash }}"\n{% endif %}\n{% if ssh_authorized_keys and (ssh_authorized_keys | length) > 0 %}\n      ssh_authorized_keys:\n{% for key in ssh_authorized_keys %}\n        - "{{ key }}"\n{% endfor %}\n{% endif %}\nstorage:\n  files:\n    - path: /etc/hostname\n      contents:\n        inline: |\n          {{ name }}\n    - path: /etc/systemd/network/static.network\n      contents:\n        inline: |\n          [Match]\n          Name=eth0\n\n          [Network]\n          Address={{ ip }}/24\n          Gateway={{ gateway }}\n{% if dns_servers and (dns_servers | length) > 0 %}\n{% for dns in dns_servers %}\n          DNS={{ dns }}\n{% endfor %}\n{% endif %}\n  filesystems:\n    - device: {{ data_disk_device }}\n      format: ext4\n      path: {{ data_disk_mount }}\n      with_mount_unit: true\nsystemd:\n  units:\n    - name: docker.service\n      enabled: true\n    - name: portainer.service\n      enabled: true\n      contents: |\n        [Unit]\n        Description=Portainer\n        After=docker.service\n        Requires=docker.service\n\n        [Service]\n        TimeoutStartSec=0\n        ExecStartPre=-/usr/bin/docker kill portainer\n        ExecStartPre=-/usr/bin/docker rm portainer\n        ExecStartPre=/usr/bin/docker pull portainer/portainer-ce:latest\n        ExecStart =/usr/bin/docker run --name portainer -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest\n        ExecStop=/usr/bin/docker stop portainer\n\n        [Install]\n        WantedBy=multi-user.target'
 
 
 root_dir="$(dirname "$(dirname "$(readlink -f "$0")")")"
@@ -618,6 +732,7 @@ ROOT_SCRIPT="cvms"
 ASSETS_DIR=".assets"
 TPLS_DIR="$root_dir/tpls"
 
+source "$bin_dir/inc/gen-flatcar"
 
 function help_message() {
   echo "======================="
@@ -626,6 +741,7 @@ function help_message() {
   echo ""
   download_help
   gen-cloud-init_help
+  gen-flatcar_help
   run-cloud-init_help
   stop_help
   echo ""
@@ -649,6 +765,18 @@ function do_start() {
       fi
 
       do_gen-cloud-init "$@"
+      ;;
+    gen-flatcar)
+      if [[ -z "${CVMS_TEMPLATE_FLATCAR_BUTANE:-}" ]]; then
+        local templates_inc="$bin_dir/inc/templates"
+        if [[ ! -f "$templates_inc" ]]; then
+          echo "Error: Compiled templates file $templates_inc not found. Please run ./bin/compile first."
+          exit 1
+        fi
+        source "$templates_inc"
+      fi
+
+      do_gen-flatcar "$@"
       ;;
     run-cloud-init)
       do_run-cloud-init "$@"

@@ -55,6 +55,68 @@ with open(out_path, "w") as f:
 ' "$tpl_content" "$out_path" "$@"
 }
 
+# Renders a Jinja2 template string to a file using JSON-encoded context values.
+# First argument is the template content, second argument is the output file
+# path, and the rest are key=json_value pairs. Each value MUST be valid JSON
+# (e.g. "string", 42, ["a","b"], {"key":"val"}). This variant supports lists
+# and other complex types that render_j2_content cannot express via plain
+# key=value strings.
+function render_j2_content_json() {
+  if ! python3 -c "import jinja2" &> /dev/null; then
+    echo "Error: Python jinja2 module is not installed. Please run: pip install jinja2"
+    exit 1
+  fi
+
+  local tpl_content="$1"
+  local out_path="$2"
+  shift 2
+
+  python3 -c '
+import jinja2, sys, json
+tpl_content = sys.argv[1]
+out_path = sys.argv[2]
+ctx = {}
+for arg in sys.argv[3:]:
+    k, v = arg.split("=", 1)
+    ctx[k] = json.loads(v)
+tpl = jinja2.Template(tpl_content)
+with open(out_path, "w") as f:
+    f.write(tpl.render(**ctx))
+' "$tpl_content" "$out_path" "$@"
+}
+
+# Utility: encode a raw string as a JSON string (with quotes).
+# Usage: v=$(json_str "hello world")  =>  "hello world"
+function json_str() {
+  python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
+# Generate a SHA-512 password hash suitable for Flatcar Butane passwd.users.
+# Uses mkpasswd, openssl, or Python crypt (tried in that order).
+# Usage: ph=$(hash_password "changeme")
+function hash_password() {
+  local pass="$1"
+
+  if command -v mkpasswd &> /dev/null; then
+    mkpasswd -m sha-512 "$pass" 2>/dev/null && return 0
+  fi
+
+  if command -v openssl &> /dev/null; then
+    local h
+    h=$(openssl passwd -6 "$pass" 2>/dev/null) && { echo "$h"; return 0; }
+  fi
+
+  if python3 -c "import crypt" &> /dev/null; then
+    python3 -c "
+import crypt, sys
+print(crypt.crypt(sys.argv[1], crypt.mksalt(crypt.METHOD_SHA512)))
+" "$pass" 2>/dev/null && return 0
+  fi
+
+  echo "Error: Unable to hash password — install mkpasswd, openssl, or Python crypt module." >&2
+  exit 1
+}
+
 # Validate host authentication settings by effective OS.
 # - flatcar: requires pass OR at least one ssh_authorized_key.
 # - non-flatcar: requires a non-empty pass.

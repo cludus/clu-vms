@@ -9,6 +9,7 @@ TPLS_DIR="$root_dir/tpls"
 source "$bin_dir/inc/utils"
 source "$bin_dir/inc/download"
 source "$bin_dir/inc/gen-cloud-init"
+source "$bin_dir/inc/gen-flatcar"
 source "$bin_dir/inc/run-cloud-init"
 source "$bin_dir/inc/stop"
 
@@ -19,6 +20,7 @@ function help_message() {
   echo ""
   download_help
   gen-cloud-init_help
+  gen-flatcar_help
   run-cloud-init_help
   stop_help
   echo ""
@@ -42,6 +44,18 @@ function do_start() {
       fi
 
       do_gen-cloud-init "$@"
+      ;;
+    gen-flatcar)
+      if [[ -z "${CVMS_TEMPLATE_FLATCAR_BUTANE:-}" ]]; then
+        local templates_inc="$bin_dir/inc/templates"
+        if [[ ! -f "$templates_inc" ]]; then
+          echo "Error: Compiled templates file $templates_inc not found. Please run ./bin/compile first."
+          exit 1
+        fi
+        source "$templates_inc"
+      fi
+
+      do_gen-flatcar "$@"
       ;;
     run-cloud-init)
       do_run-cloud-init "$@"

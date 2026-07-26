@@ -1,0 +1,29 @@
+defaults:
+  user: alpine
+  pass: mypass1
+  os: flatcar
+  bridge: vmbr0
+  memory: 2G
+  storage_size: 100G
+  ssh_authorized_keys:
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDemoKeyForFlatcarOnly"
+
+# Bridge configuration for qemu networking.
+# This sample assumes the bridge already exists on the host (create: false).
+# See vms-bridge.yml for a config that auto-creates the bridge when missing.
+# All bridge settings are read from here by check_bridge — no env vars needed.
+bridge:
+  name: vmbr0
+  phys_if: eth1       # physical interface to enslave (auto-detected if omitted)
+  ip: 10.146.101.1/24 # bridge IP/CIDR (auto-derived from VM subnet if omitted)
+  create: false       # set true to auto-create the bridge if missing
+
+hosts:
+  - name: vm1
+    ip: 10.146.101.210
+  - name: vm2
+    ip: 10.146.101.211
+  - name: vm3
+    ip: 10.146.101.212
+  - name: vm4
+    ip: 10.146.101.213

@@ -1,6 +1,7 @@
 [tools]
 python = "latest"
 yq = "latest"
+"aqua:coreos/butane" = "latest"
 
 [tasks.install]
 description = "Install all project dependencies"
@@ -19,7 +20,7 @@ echo "  sudo apt install genisoimage qemu-system-x86 qemu-utils iproute2 sudo e2
 echo ""
 
 # Verify system tools
-for tool in genisoimage qemu-img qemu-nbd qemu-system-x86_64 sfdisk mkfs.ext4 curl ip sudo; do
+for tool in butane genisoimage qemu-img qemu-nbd qemu-system-x86_64 sfdisk mkfs.ext4 curl ip sudo; do
   if command -v "$tool" &>/dev/null; then
     echo "  ✓ $tool found"
   else
@@ -32,7 +33,7 @@ done
 description = "Verify all required tools are installed"
 run = """
 errors=0
-for tool in python3 yq genisoimage qemu-img qemu-nbd qemu-system-x86_64 sfdisk mkfs.ext4 curl ip sudo; do
+for tool in python3 yq butane genisoimage qemu-img qemu-nbd qemu-system-x86_64 sfdisk mkfs.ext4 curl ip sudo; do
   if command -v "$tool" &>/dev/null; then
     echo "  ✓ $tool"
   else
