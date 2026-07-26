@@ -3,11 +3,15 @@ version: 1.0.0
 passwd:
   users:
     - name: {{ user }}
+{% if password_hash %}
       password_hash: "{{ password_hash }}"
+{% endif %}
+{% if ssh_authorized_keys and (ssh_authorized_keys | length) > 0 %}
       ssh_authorized_keys:
 {% for key in ssh_authorized_keys %}
         - "{{ key }}"
 {% endfor %}
+{% endif %}
 storage:
   files:
     - path: /etc/hostname
@@ -23,9 +27,11 @@ storage:
           [Network]
           Address={{ ip }}/24
           Gateway={{ gateway }}
+{% if dns_servers and (dns_servers | length) > 0 %}
 {% for dns in dns_servers %}
           DNS={{ dns }}
 {% endfor %}
+{% endif %}
   filesystems:
     - device: {{ data_disk_device }}
       format: ext4

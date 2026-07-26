@@ -84,9 +84,10 @@ to Phase 6, after those scripts exist.
 
 ## Phase 2 — VMS Config Schema Extensions
 
-**Goal:** Add the new `vms.yml` keys that Flatcar needs: SSH authorized keys
-and optional SMP/CPU count. Keep backwards compatibility with existing
-cloud-init configs.
+**Goal:** Add the new `vms.yml` keys that Flatcar needs: optional SSH
+authorized keys and optional SMP/CPU count. Keep backwards compatibility with
+existing cloud-init configs, while enforcing that each Flatcar host has at
+least one authentication method configured (password or SSH key).
 
 **Why third:** Phases 3–4 need these values at generation and runtime.
 Doing the schema change in isolation avoids mixing config parsing with
@@ -104,13 +105,13 @@ script logic.
 ```yaml
 defaults:
   user: alpine
-  pass: changeme
+  pass: changeme            # optional for Flatcar if ssh_authorized_keys is set
   os: alpine
   bridge: vmbr0
   memory: 2G
   storage_size: 100G
   cpus: 2                  # NEW — number of vCPUs (default: 2)
-  ssh_authorized_keys:     # NEW — list of SSH public keys
+  ssh_authorized_keys:     # NEW — optional list of SSH public keys
     - "ssh-rsa AAAAB3..."
 ```
 
@@ -120,16 +121,20 @@ Per-host overrides for `cpus` and `ssh_authorized_keys` are supported
 ### Decisions
 
 - `ssh_authorized_keys` is a YAML list. The Butane template joins elements
-  into the Butane `passwd.users[].ssh_authorized_keys` list.
+  into the Butane `passwd.users[].ssh_authorized_keys` list when present.
 - `cpus` maps to QEMU `-smp $cpus`.
-- Flatcar ignores `pass` — it uses SSH keys only. Cloud-init continues to
-  use `pass` as before.
+- For Flatcar, `pass` and `ssh_authorized_keys` are individually optional,
+  but at least one must be configured per host after applying host overrides
+  and defaults.
+- Cloud-init continues to use `pass` as before.
 
 ### Acceptance tests
 
 1. `yq '.defaults.ssh_authorized_keys[0]' test/vms.yml` returns a key.
 2. `yq '.defaults.cpus' test/vms.yml` returns `2`.
-3. Existing `./bin/cvms gen-cloud-init` still works with the updated `vms.yml`
+3. Validation rejects a Flatcar host when both `pass` and
+  `ssh_authorized_keys` are empty/missing.
+4. Existing `./bin/cvms gen-cloud-init` still works with the updated `vms.yml`
    (backwards compatibility verified).
 
 ---
@@ -153,6 +158,8 @@ OS image copy, Butane YAML → Ignition JSON compilation, and data disk creation
 3. Validate `.assets/imgs/flatcar.img` exists.
 4. Read defaults from `vms.yml`.
 5. For each host where `os == "flatcar"` (or `defaults.os == "flatcar"`):
+  - Validate authentication config: host must resolve to either a non-empty
+    password or at least one SSH authorized key.
    - Copy `.assets/imgs/flatcar.img` → `.assets/<host>/flatcar.img` (via shared `copy_base_os_image`).
    - Render Jinja2 template → `.assets/<host>/config/flatcar.yaml`.
    - Compile with `butane --pretty --strict` → `.assets/<host>/config/flatcar.ign`.
