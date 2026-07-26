@@ -137,7 +137,7 @@ Per-host overrides for `cpus` and `ssh_authorized_keys` are supported
 
 ---
 
-## Phase 3 — `gen-flatcar` Script
+## Phase 3 — `gen-flatcar` Script [COMPLETED]
 
 **Goal:** Create the generation script that produces per-host Flatcar assets:
 OS image copy, Butane YAML → Ignition JSON compilation, and data disk creation.
