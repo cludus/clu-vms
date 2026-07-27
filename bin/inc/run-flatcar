@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+
+ROOT_SCRIPT="${ROOT_SCRIPT:-cvms}"
+ASSETS_DIR="${ASSETS_DIR:-.assets}"
+
+function run-flatcar_help() {
+  echo "======================="
+  echo "Run Flatcar Configuration"
+  echo "  Usage: $ROOT_SCRIPT run-flatcar [--foreground]"
+  echo "  Runs Flatcar VMs."
+  echo "  Options:"
+  echo "    --foreground  Run QEMU in the foreground (default: daemonize)."
+  echo ""
+}
+
+function flatcar_process_host() {
+  local host="$1"
+  local foreground="$2"
+  local default_bridge="$3"
+  local default_memory="$4"
+  local default_cpus="$5"
+
+  local name ip
+  name=$(echo "$host" | yq '.name')
+  ip=$(echo "$host" | yq '.ip')
+  echo "Running flatcar host: $name with IP: $ip ..."
+
+  local os_image="$ASSETS_DIR/$name/flatcar.img"
+  local ignition="$ASSETS_DIR/$name/config/flatcar.ign"
+  local data_img="${name}-data.qcow2"
+
+  # Validate required Flatcar artifacts.
+  for f in "$os_image" "$ignition" "$data_img"; do
+    if [[ ! -f "$f" ]]; then
+      echo "Error: Required artifact $f not found. Run gen-flatcar first."
+      exit 1
+    fi
+  done
+
+  local bridge
+  bridge=$(echo "$host" | yq '.bridge // ""')
+  if [[ -z "$bridge" || "$bridge" == "null" ]]; then
+    bridge="$default_bridge"
+  fi
+
+  local memory
+  memory=$(echo "$host" | yq '.memory // ""')
+  if [[ -z "$memory" || "$memory" == "null" ]]; then
+    memory="$default_memory"
+  fi
+
+  local cpus
+  cpus=$(echo "$host" | yq '.cpus // ""')
+  if [[ -z "$cpus" || "$cpus" == "null" ]]; then
+    cpus="$default_cpus"
+  fi
+
+  local daemon_args=()
+  if [[ "$foreground" != "1" ]]; then
+    mkdir -p "$name"
+    daemon_args=(-daemonize -pidfile "$name/qemu.pid")
+    echo "  Daemonizing (PID file: $name/qemu.pid) ..."
+  else
+    echo "  Running in foreground mode ..."
+  fi
+
+  qemu-system-x86_64 -enable-kvm -cpu host -m "$memory" -smp "$cpus" \
+    "${daemon_args[@]}" \
+    -drive file="$os_image",if=virtio,format=qcow2 \
+    -drive file="$data_img",if=virtio,format=qcow2 \
+    -netdev bridge,id=net0,br="$bridge" \
+    -device virtio-net-pci,netdev=net0 \
+    -fw_cfg name=opt/org.flatcar-linux/config,file="$ignition"
+}
+
+function do_run-flatcar() {
+  local foreground=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --foreground) foreground=1; shift ;;
+      *)
+        echo "Error: Unknown option: $1"
+        echo "Usage: $ROOT_SCRIPT run-flatcar [--foreground]"
+        exit 1
+        ;;
+    esac
+  done
+
+  echo "Running flatcar vms for all flatcar hosts defined in vms.yml..."
+  echo ""
+
+  if [[ ! -f "vms.yml" ]]; then
+    echo "Error: vms.yml not found in the current directory. Please ensure you are in the correct directory and that vms.yml exists."
+    exit 1
+  fi
+
+  for tool in yq qemu-system-x86_64; do
+    if ! command -v "$tool" &> /dev/null; then
+      echo "Error: $tool is not installed. Please install it and try again."
+      exit 1
+    fi
+  done
+
+  local default_os default_bridge default_memory default_cpus
+  default_os=$(yq '.defaults.os' vms.yml)
+  default_bridge=$(yq '.defaults.bridge' vms.yml)
+  default_memory=$(yq '.defaults.memory' vms.yml)
+  default_cpus=$(yq '.defaults.cpus // 2' vms.yml)
+
+  check_bridge
+
+  local host_count=0
+  readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
+  for host in "${hosts[@]}"; do
+    local host_os
+    host_os=$(echo "$host" | yq '.os // ""')
+    if [[ -z "$host_os" || "$host_os" == "null" ]]; then
+      host_os="$default_os"
+    fi
+
+    if [[ "$host_os" != "flatcar" ]]; then
+      echo "Skipping host with OS $host_os (not flatcar)"
+      continue
+    fi
+
+    flatcar_process_host "$host" "$foreground" "$default_bridge" "$default_memory" "$default_cpus"
+    host_count=$((host_count + 1))
+  done
+
+  if [[ $host_count -eq 0 ]]; then
+    echo "No flatcar hosts found in vms.yml (defaults.os=$default_os, or hosts without os override)"
+  fi
+}

@@ -11,6 +11,7 @@ source "$bin_dir/inc/download"
 source "$bin_dir/inc/gen-cloud-init"
 source "$bin_dir/inc/gen-flatcar"
 source "$bin_dir/inc/run-cloud-init"
+source "$bin_dir/inc/run-flatcar"
 source "$bin_dir/inc/stop"
 
 function help_message() {
@@ -22,6 +23,7 @@ function help_message() {
   gen-cloud-init_help
   gen-flatcar_help
   run-cloud-init_help
+  run-flatcar_help
   stop_help
   echo ""
 }
@@ -59,6 +61,9 @@ function do_start() {
       ;;
     run-cloud-init)
       do_run-cloud-init "$@"
+      ;;
+    run-flatcar)
+      do_run-flatcar "$@"
       ;;
     stop)
       do_stop "$@"
