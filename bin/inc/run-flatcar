@@ -19,6 +19,7 @@ function flatcar_process_host() {
   local default_bridge="$3"
   local default_memory="$4"
   local default_cpus="$5"
+  local default_vlan="$6"
 
   local name ip
   name=$(echo "$host" | yq '.name')
@@ -55,6 +56,17 @@ function flatcar_process_host() {
     cpus="$default_cpus"
   fi
 
+  local vlan
+  vlan=$(echo "$host" | yq '.vlan // ""')
+  if [[ -z "$vlan" || "$vlan" == "null" ]]; then
+    vlan="$default_vlan"
+  fi
+
+  local netdev="bridge,id=net0,br=$bridge"
+  if [[ -n "$vlan" && "$vlan" != "null" ]]; then
+    netdev+=",vlan=$vlan"
+  fi
+
   local daemon_args=()
   if [[ "$foreground" != "1" ]]; then
     mkdir -p "$name"
@@ -68,7 +80,7 @@ function flatcar_process_host() {
     "${daemon_args[@]}" \
     -drive file="$os_image",if=virtio,format=qcow2 \
     -drive file="$data_img",if=virtio,format=qcow2 \
-    -netdev bridge,id=net0,br="$bridge" \
+    -netdev "$netdev" \
     -device virtio-net-pci,netdev=net0 \
     -fw_cfg name=opt/org.flatcar-linux/config,file="$ignition"
 }
@@ -101,11 +113,12 @@ function do_run-flatcar() {
     fi
   done
 
-  local default_os default_bridge default_memory default_cpus
+  local default_os default_bridge default_memory default_cpus default_vlan
   default_os=$(yq '.defaults.os' vms.yml)
   default_bridge=$(yq '.defaults.bridge' vms.yml)
   default_memory=$(yq '.defaults.memory' vms.yml)
   default_cpus=$(yq '.defaults.cpus // 2' vms.yml)
+  default_vlan=$(yq '.defaults.vlan // ""' vms.yml)
 
   check_bridge
 
@@ -123,7 +136,7 @@ function do_run-flatcar() {
       continue
     fi
 
-    flatcar_process_host "$host" "$foreground" "$default_bridge" "$default_memory" "$default_cpus"
+    flatcar_process_host "$host" "$foreground" "$default_bridge" "$default_memory" "$default_cpus" "$default_vlan"
     host_count=$((host_count + 1))
   done
 

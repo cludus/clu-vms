@@ -33,7 +33,9 @@ function build_dist_cvms() {
     "$root_dir/bin/inc/utils"
     "$root_dir/bin/inc/download"
     "$root_dir/bin/inc/gen-cloud-init"
+    "$root_dir/bin/inc/gen-flatcar"
     "$root_dir/bin/inc/run-cloud-init"
+    "$root_dir/bin/inc/run-flatcar"
     "$root_dir/bin/inc/stop"
     "$out_file"
   )
@@ -55,13 +57,15 @@ function build_dist_cvms() {
   append_file_without_shebang "$root_dir/bin/inc/utils" "$dist_file"
   append_file_without_shebang "$root_dir/bin/inc/download" "$dist_file"
   append_file_without_shebang "$root_dir/bin/inc/gen-cloud-init" "$dist_file"
+  append_file_without_shebang "$root_dir/bin/inc/gen-flatcar" "$dist_file"
   append_file_without_shebang "$root_dir/bin/inc/run-cloud-init" "$dist_file"
+  append_file_without_shebang "$root_dir/bin/inc/run-flatcar" "$dist_file"
   append_file_without_shebang "$root_dir/bin/inc/stop" "$dist_file"
   append_file_without_shebang "$out_file" "$dist_file"
 
   # Inline cvms script body, skipping include source lines because content is
   # embedded above.
-  grep -vE '^[[:space:]]*(source|\.)[[:space:]]+"\$bin_dir/inc/(utils|download|gen-cloud-init|run-cloud-init|stop)"[[:space:]]*$' "$cvms_file" | tail -n +2 >> "$dist_file"
+  grep -vE '^[[:space:]]*(source|\.)[[:space:]]+"\$bin_dir/inc/(utils|download|gen-cloud-init|gen-flatcar|run-cloud-init|run-flatcar|stop)"[[:space:]]*$' "$cvms_file" | tail -n +2 >> "$dist_file"
 
   chmod +x "$dist_file"
   echo "Generated $dist_file"

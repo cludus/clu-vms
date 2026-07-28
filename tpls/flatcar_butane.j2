@@ -25,6 +25,9 @@ storage:
           Name=eth0
 
           [Network]
+{% if vlan %}
+          VLAN={{ vlan }}
+{% endif %}
           Address={{ ip }}/24
           Gateway={{ gateway }}
 {% if dns_servers and (dns_servers | length) > 0 %}

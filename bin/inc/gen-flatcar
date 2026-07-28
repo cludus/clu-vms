@@ -18,19 +18,24 @@ function generate_flatcar_host() {
   local default_bridge="$4"
   local default_storage_size="$5"
   local default_dns_servers="$6"
+  local default_vlan="$7"
 
-  local name ip bridge gateway
+  local name ip bridge gateway vlan
   name=$(echo "$host" | yq '.name')
   ip=$(echo "$host" | yq '.ip')
   bridge=$(echo "$host" | yq '.bridge // ""')
   if [[ -z "$bridge" ]]; then
     bridge="$default_bridge"
   fi
+  vlan=$(echo "$host" | yq '.vlan // ""')
+  if [[ -z "$vlan" || "$vlan" == "null" ]]; then
+    vlan="$default_vlan"
+  fi
   gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
 
   local os_name
   os_name=$(copy_base_os_image "flatcar" "$name")
-  echo "Processing host: $name with IP: $ip (OS: flatcar, bridge: $bridge)"
+  echo "Processing host: $name with IP: $ip (OS: flatcar, bridge: $bridge${vlan:+, vlan: $vlan})"
 
   # ── Resolve effective authentication ────────────────────────────────
   local effective_pass effective_ssh_keys_json password_hash
@@ -65,6 +70,12 @@ function generate_flatcar_host() {
   data_disk_device_json=$(json_str "/dev/vdb")
   data_disk_mount_json=$(json_str "/var/lib/docker")
 
+  local vlan_json
+  vlan_json="null"
+  if [[ -n "$vlan" && "$vlan" != "null" ]]; then
+    vlan_json=$(json_str "$vlan")
+  fi
+
   # ── Render Butane YAML ──────────────────────────────────────────────
   local config_dir="$ASSETS_DIR/$name/config"
   mkdir -p "$config_dir"
@@ -76,6 +87,7 @@ function generate_flatcar_host() {
     "password_hash=$password_hash" \
     "ip=$(json_str "$ip")" \
     "gateway=$(json_str "$gateway")" \
+    "vlan=$vlan_json" \
     "dns_servers=$dns_servers_json" \
     "ssh_authorized_keys=$effective_ssh_keys_json" \
     "data_disk_device=$data_disk_device_json" \
@@ -135,6 +147,8 @@ function do_gen-flatcar() {
   local default_pass=$(yq '.defaults.pass' vms.yml)
   local default_bridge=$(yq '.defaults.bridge' vms.yml)
   local default_storage_size=$(yq '.defaults.storage_size' vms.yml)
+  local default_vlan
+  default_vlan=$(yq '.defaults.vlan // ""' vms.yml)
 
   # Default DNS servers — vms.yml can override via defaults.dns_servers
   local default_dns_servers='["8.8.8.8","1.1.1.1"]'
@@ -167,7 +181,7 @@ function do_gen-flatcar() {
       exit 1
     fi
 
-    generate_flatcar_host "$host" "$default_user" "$default_pass" "$default_bridge" "$default_storage_size" "$default_dns_servers"
+    generate_flatcar_host "$host" "$default_user" "$default_pass" "$default_bridge" "$default_storage_size" "$default_dns_servers" "$default_vlan"
     host_count=$((host_count + 1))
   done
 

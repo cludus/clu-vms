@@ -18,9 +18,11 @@ All commands must be run from a directory containing a `vms.yml` file
 
 | Command | Description |
 |---|---|
-| `cvms download` | Download latest Alpine Linux and Ubuntu Server cloud images |
+| `cvms download` | Download latest Alpine Linux, Ubuntu Server, and Flatcar images |
 | `cvms gen-cloud-init` | Generate per-VM cloud-init config, seed ISO, OS copy, and storage |
+| `cvms gen-flatcar` | Generate per-VM Flatcar Butane and Ignition config, OS copy, and storage |
 | `cvms run-cloud-init [--foreground]` | Start all VMs (daemonized by default) |
+| `cvms run-flatcar [--foreground]` | Start all Flatcar VMs (daemonized by default) |
 | `cvms stop [host-name]` | Graceful ACPI shutdown of VMs (all, or a single host) |
 
 ## Workflow for Cloud Init
@@ -31,6 +33,26 @@ cd test                      # directory with vms.yml
 ../bin/cvms gen-cloud-init   # 2. Generate per-VM assets under .assets/<vm>/
 ../bin/cvms run-cloud-init   # 3. Start all VMs (daemonized)
 ../bin/cvms stop             # 4. Gracefully shut down all VMs
+```
+
+## Workflow for Flatcar
+
+```bash
+cd test                   # directory with vms.yml
+../bin/cvms download      # 1. Download base OS images to .assets/imgs/
+../bin/cvms gen-flatcar   # 2. Generate Flatcar assets under .assets/<vm>/
+../bin/cvms run-flatcar   # 3. Start Flatcar VMs (daemonized)
+../bin/cvms stop          # 4. Gracefully shut down all VMs
+```
+
+Optional VLAN tagging for Flatcar hosts:
+
+```yaml
+hosts:
+  - name: vm1
+    ip: 192.168.100.201
+    os: flatcar
+    vlan: 10
 ```
 
 ## Configuration
@@ -103,8 +125,8 @@ directory.
 
 ```
 bin/cvms            Main entrypoint
-bin/inc/            Include scripts (download, gen-cloud-init, run-cloud-init, stop, utils)
-tpls/               Jinja2 cloud-init templates (meta-data, user-data, network-config)
+bin/inc/            Include scripts (download, gen-cloud-init, gen-flatcar, run-cloud-init, run-flatcar, stop, utils)
+tpls/               Jinja2 templates (cloud-init and flatcar butane)
 demos/              Example configurations
 test/               Test vms.yml configurations
 ```
