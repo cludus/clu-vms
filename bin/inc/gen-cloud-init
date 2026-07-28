@@ -15,7 +15,7 @@ function generate_host() {
   local host="$1"
   local default_user="$2"
   local default_pass="$3"
-  local default_os="$4"
+  local os_name="$4"
   local default_bridge="$5"
   local default_storage_size="$6"
   local name=$(echo "$host" | yq '.name')
@@ -30,8 +30,9 @@ function generate_host() {
   # Derive gateway from IP (replace last octet with .1)
   local gateway=$(echo "$ip" | sed 's/\.[0-9]*$/.1/')
 
-  local os_name=$(copy_base_os_image "$default_os" "$name")
-  echo "Processing host: $name with IP: $ip (OS: $os_name, bridge: $bridge${vlan:+, vlan: $vlan})"
+  local copied_os_image
+  copied_os_image=$(copy_base_os_image "$os_name" "$name")
+  echo "Processing host: $name with IP: $ip (OS: $copied_os_image, bridge: $bridge${vlan:+, vlan: $vlan})"
 
   # generate config files for cloud-init to config folder
   local config_dir="$ASSETS_DIR/$name/config"
@@ -95,11 +96,29 @@ function do_gen-cloud-init() {
   local default_ssh_keys_len
   default_ssh_keys_len=$(yq '.defaults.ssh_authorized_keys // [] | length' vms.yml)
 
+  local host_count=0
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
+    local host_os
+    host_os=$(echo "$host" | yq '.os // ""')
+    if [[ -z "$host_os" || "$host_os" == "null" ]]; then
+      host_os="$default_os"
+    fi
+
+    if [[ "$host_os" != "alpine" && "$host_os" != "ubuntu" ]]; then
+      echo "Skipping host with OS $host_os (not cloud-init: alpine/ubuntu)"
+      continue
+    fi
+
     if ! validate_host_auth_config "$host" "$default_os" "$default_pass" "$default_ssh_keys_len"; then
       exit 1
     fi
-    generate_host "$host" "$default_user" "$default_pass" "$default_os" "$default_bridge" "$default_storage_size"
+
+    generate_host "$host" "$default_user" "$default_pass" "$host_os" "$default_bridge" "$default_storage_size"
+    host_count=$((host_count + 1))
   done
+
+  if [[ $host_count -eq 0 ]]; then
+    echo "No cloud-init hosts found in vms.yml (supported OS: alpine, ubuntu; defaults.os=$default_os)"
+  fi
 }

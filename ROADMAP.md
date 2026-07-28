@@ -230,7 +230,7 @@ injecting the Ignition config via `-fw_cfg`.
 
 ---
 
-## Phase 5 — OS-Based Host Filtering
+## Phase 5 — OS-Based Host Filtering [COMPLETED]
 
 **Goal:** Both cloud-init and Flatcar generators/ runners should only process
 hosts matching their OS type. Currently `gen-cloud-init` processes ALL hosts

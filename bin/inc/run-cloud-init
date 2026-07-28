@@ -97,11 +97,37 @@ function do_run-cloud-init() {
   local default_bridge=$(yq '.defaults.bridge' vms.yml)
   local default_memory=$(yq '.defaults.memory' vms.yml)
 
-  # Ensure the bridge used for qemu networking exists on the host before launching any VMs.
-  check_bridge
-
+  local host_count=0
+  local -a matching_hosts=()
+  local -a matching_oses=()
   readarray -t hosts < <(yq -o=json -I=0 '.hosts[]' vms.yml)
   for host in "${hosts[@]}"; do
-    cloud_init_process_host "$host" "$default_os" "$foreground" "$default_bridge" "$default_memory"
+    local host_os
+    host_os=$(echo "$host" | yq '.os // ""')
+    if [[ -z "$host_os" || "$host_os" == "null" ]]; then
+      host_os="$default_os"
+    fi
+
+    if [[ "$host_os" != "alpine" && "$host_os" != "ubuntu" ]]; then
+      echo "Skipping host with OS $host_os (not cloud-init: alpine/ubuntu)"
+      continue
+    fi
+
+    matching_hosts+=("$host")
+    matching_oses+=("$host_os")
+    host_count=$((host_count + 1))
+  done
+
+  if [[ $host_count -eq 0 ]]; then
+    echo "No cloud-init hosts found in vms.yml (supported OS: alpine, ubuntu; defaults.os=$default_os)"
+    return 0
+  fi
+
+  # Ensure the bridge used for qemu networking exists on the host before launching cloud-init VMs.
+  check_bridge
+
+  local i
+  for i in "${!matching_hosts[@]}"; do
+    cloud_init_process_host "${matching_hosts[$i]}" "${matching_oses[$i]}" "$foreground" "$default_bridge" "$default_memory"
   done
 }
