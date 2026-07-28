@@ -189,7 +189,7 @@ OS image copy, Butane YAML → Ignition JSON compilation, and data disk creation
 
 ---
 
-## Phase 4 — `run-flatcar` Script
+## Phase 4 — `run-flatcar` Script [COMPLETED]
 
 **Goal:** Create the runtime script that boots Flatcar VMs with QEMU,
 injecting the Ignition config via `-fw_cfg`.
