@@ -1,4 +1,4 @@
-**/*
+.assets/vm1/config
 !.gitignore
 !vms-*.yml
 vms.yml

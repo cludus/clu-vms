@@ -1,2 +1,4 @@
 **/*.img
-demos/baremetal/data
+bash/demos/baremetal/data
+.idea
+**/*.qcow2
