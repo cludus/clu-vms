@@ -2,3 +2,4 @@
 bash/demos/baremetal/data
 .idea
 **/*.qcow2
+bin/**
