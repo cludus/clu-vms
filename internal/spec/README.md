@@ -45,20 +45,6 @@ type CloudInitConfig interface {
 	Build() string
 }
 
-type QemuService interface {
-	CreateVM(name string) QemuVM
-	OpenVM(name string) QemuVM
-}
-
-type QemuVM interface {
-	Name() string
-	SetCloudInitConfig(config string)
-	AddDataDisk(path string)
-	AddNetworkDevice(bridge string, vlan int)
-	Start() error
-	Shutdown() error
-	IsRunning() bool
-}
 
 type RouterVM interface {
 	AddOSPFNetwork(network string, gateway string, mask string)
