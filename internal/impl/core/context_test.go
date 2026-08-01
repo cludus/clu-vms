@@ -21,6 +21,10 @@ func TestWorkContext(t *testing.T) {
 		t.Fatal("failed to create file")
 	}
 
+	if !wc.FileExists("dummy_dir/dummy_file.txt") {
+		t.Fatal("file does not exist")
+	}
+
 	err = wc.DeleteDir("dummy_dir")
 	if err != nil {
 		t.Fatal("failed to delete directory")

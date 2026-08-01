@@ -16,7 +16,7 @@ func main() {
 		return
 	}
 	ctx := core.NewLocalContext(wd)
-	err = ctx.RunCommand([]string{"ls", "-l"})
+	err = ctx.RunCommand("ls", "-l")
 	if err != nil {
 		fmt.Println(err)
 	}

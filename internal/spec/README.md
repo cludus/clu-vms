@@ -7,21 +7,7 @@ type S3Service interface {
 	UploadVM(path string, url string)
 }
 
-type FileSystem int
 
-const (
-	FileSystemExt4 FileSystem = iota
-	FileSystemXFS
-)
-
-type ImagesService interface {
-	DownloadVMImage(url string, path string) error
-	ConvertToQcow2(path string) error
-}
-
-type DiskService interface {
-	CreateDataDisk(path string, sizeGB int, fs FileSystem) error
-}
 
 type NetworkService interface {
 	CreateBridge(bridge string, ipAddr string, iface string) error

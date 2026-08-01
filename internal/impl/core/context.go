@@ -28,13 +28,14 @@ func (wc *WorkContextImpl) GetType() spec.WorkContextType {
 	return wc.wcType
 }
 
-func (wc *WorkContextImpl) RunCommand(cmdStr []string) error {
+func (wc *WorkContextImpl) RunCommand(cmdStr ...string) error {
 	cmd := exec.Command(cmdStr[0], cmdStr[1:]...)
 	cmd.Dir = wc.workDir
 
 	// Runs the command and captures combined stdout/stderr
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(string(output))
 		return err
 	}
 	fmt.Println(string(output))
