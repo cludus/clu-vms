@@ -6,12 +6,23 @@ import (
 )
 
 func TestWorkContext(t *testing.T) {
-	wc := NewLocalContext("/tmp")
+	wc := NewLocalContext("testdata")
 	if wc.GetType() != spec.WorkContextTypeLocal {
 		t.Fatal("wrong work context type")
 	}
 
-	wc.CreateDir("/tmp/test")
-	//TODO test all methods
-	t.Fatal("TODO not implemented")
+	err := wc.CreateDir("dummy_dir")
+	if err != nil {
+		t.Fatal("failed to create directory")
+	}
+
+	err = wc.CreateFile("dummy_dir/dummy_file.txt", "Hello, World!")
+	if err != nil {
+		t.Fatal("failed to create file")
+	}
+
+	err = wc.DeleteDir("dummy_dir")
+	if err != nil {
+		t.Fatal("failed to delete directory")
+	}
 }
