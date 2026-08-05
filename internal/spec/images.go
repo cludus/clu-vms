@@ -1,10 +1,26 @@
 package spec
 
-type OSImagesType string
+type OSImagesFamily string
 
 const (
-	Alpine_3_24 = OSImagesType("alpine-3.24")
+	Alpine = OSImagesFamily("alpine")
 )
+
+type OSImagesType struct {
+	OS      OSImagesFamily
+	Version string
+}
+
+var (
+	alpine_3_24 = OSImagesType{
+		OS:      Alpine,
+		Version: "3.24",
+	}
+)
+
+func Alpine_3_24() OSImagesType {
+	return alpine_3_24
+}
 
 type OSImages interface {
 	DeleteImage(osImage OSImagesType) error

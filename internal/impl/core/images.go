@@ -11,6 +11,7 @@ type osImage struct {
 	name     string
 	filepath string
 	url      string
+	osType   spec.OSImagesType
 }
 
 var osImages map[spec.OSImagesType]osImage
@@ -19,15 +20,16 @@ const imgsPath = ".assets/imgs/"
 
 func newOsImage(osType spec.OSImagesType, url string) osImage {
 	return osImage{
-		filepath: filepath.Join(imgsPath, string(osType)+".qcow2"),
+		filepath: filepath.Join(imgsPath, string(osType.OS)+".qcow2"),
 		url:      url,
-		name:     string(osType),
+		name:     string(osType.OS),
+		osType:   osType,
 	}
 }
 
 func init() {
 	osImages = make(map[spec.OSImagesType]osImage)
-	osImages[spec.Alpine_3_24] = newOsImage(spec.Alpine_3_24, "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/alpine-virt-3.24.0-x86_64.iso")
+	osImages[spec.Alpine_3_24()] = newOsImage(spec.Alpine_3_24(), "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/alpine-virt-3.24.0-x86_64.iso")
 }
 
 type OSImages struct {
@@ -93,5 +95,4 @@ func (oi *OSImages) DeleteImage(osImage spec.OSImagesType) error {
 
 func (oi *OSImages) DeleteAllImages() error {
 	return oi.workCtx.DeleteDir(imgsPath)
-
 }
