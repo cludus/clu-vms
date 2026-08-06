@@ -9,13 +9,6 @@ type S3Service interface {
 
 
 
-type NetworkService interface {
-	CreateBridge(bridge string, ipAddr string, iface string) error
-	DeleteBridge(bridge string, ipAddr string, iface string) error
-	CreateVlan(bridge string, vlan int) error
-	DeleteVlan(bridge string, vlan int) error
-}
-
 type CloudInitService interface {
 	CreateCloudInitConfig(name string) CloudInitConfig
 }

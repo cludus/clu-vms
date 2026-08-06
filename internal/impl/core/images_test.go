@@ -6,10 +6,13 @@ import (
 )
 
 func TestOSImages(t *testing.T) {
-	workCtx := NewLocalContext("testdata")
+	workCtx, err := NewLocalContext("testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
 	osImgs := NewOSImages(workCtx)
 
-	err := osImgs.DeleteAllImages()
+	err = osImgs.DeleteAllImages()
 	if err != nil {
 		t.Fatal(err)
 	}

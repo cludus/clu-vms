@@ -29,7 +29,7 @@ func newOsImage(osType spec.OSImagesType, url string) osImage {
 
 func init() {
 	osImages = make(map[spec.OSImagesType]osImage)
-	osImages[spec.Alpine_3_24()] = newOsImage(spec.Alpine_3_24(), "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/alpine-virt-3.24.0-x86_64.iso")
+	osImages[spec.Alpine_3_24()] = newOsImage(spec.Alpine_3_24(), "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2")
 }
 
 type OSImages struct {
@@ -79,6 +79,11 @@ func (oi *OSImages) CopyOSImage(osImage spec.OSImagesType, targetPath string) er
 		if err != nil {
 			return fmt.Errorf("failed to delete file: %w", err)
 		}
+	}
+
+	err := oi.workCtx.CreateDir(filepath.Dir(targetPath))
+	if err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
 	return oi.workCtx.CopyFile(osImg.filepath, targetPath)

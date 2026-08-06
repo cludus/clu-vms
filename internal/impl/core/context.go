@@ -17,11 +17,16 @@ type WorkContextImpl struct {
 	remoteInfo spec.WorkContextRemoteInfo
 }
 
-func NewLocalContext(workDir string) *WorkContextImpl {
-	return &WorkContextImpl{
-		workDir: workDir,
+func NewLocalContext(workDir string) (*WorkContextImpl, error) {
+	absFP, err := filepath.Abs(workDir)
+	if err != nil {
+		return nil, err
+	}
+	result := WorkContextImpl{
+		workDir: absFP,
 		wcType:  spec.WorkContextTypeLocal,
 	}
+	return &result, nil
 }
 
 func (wc *WorkContextImpl) GetType() spec.WorkContextType {

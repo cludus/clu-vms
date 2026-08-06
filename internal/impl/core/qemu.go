@@ -2,102 +2,120 @@ package core
 
 import (
 	"clu-vms/internal/spec"
-	"errors"
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
 )
 
 type QemuServiceImpl struct {
-	dir string
+	workCtx spec.WorkContext
+	imgs    spec.OSImages
+	disks   spec.DiskService
+	net     spec.NetworkService
+}
+
+func NewQemuServiceImpl(workCtx spec.WorkContext) spec.QemuService {
+	return &QemuServiceImpl{
+		workCtx: workCtx,
+		imgs:    NewOSImages(workCtx),
+		disks:   NewDiskService(workCtx),
+		net:     NewNetworkService(),
+	}
 }
 
 func (qs *QemuServiceImpl) CreateVM(name string) (spec.QemuVM, error) {
-	_, err := os.Stat(qs.dir + "/" + name + ".qcow2")
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("vm file already exists: %w", err)
+	vmFileName := fmt.Sprintf(".assets/%s/system.qcow2", name)
+	if qs.workCtx.FileExists(vmFileName) {
+		err := qs.workCtx.DeleteFile(vmFileName)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	source, err := os.Open(qs.dir + "/imgs/alpine.img")
+	err := qs.imgs.CopyOSImage(spec.Alpine_3_24(), vmFileName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open source file: %w", err)
-	}
-	defer source.Close()
-
-	destination, err := os.Create(qs.dir + "/" + name + ".qcow2")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create destination file: %w", err)
-	}
-	defer destination.Close()
-
-	// Copy the contents from source to destination
-	_, err = io.Copy(destination, source)
-	if err != nil {
-		return nil, fmt.Errorf("failed to copy data: %w", err)
+		return nil, err
 	}
 
-	// Commit the file contents to stable storage
-	err = destination.Sync()
-	if err != nil {
-		return nil, fmt.Errorf("failed to sync destination file: %w", err)
-	}
-
-	return &QemuVMImpl{
-		name: name,
-		path: qs.dir + "/" + name + ".qcow2",
-	}, nil
+	return newQemuVM(name, qs.workCtx, qs.disks), nil
 }
 
 func (qs *QemuServiceImpl) OpenVM(name string) (spec.QemuVM, error) {
-	return nil, nil
+	return newQemuVM(name, qs.workCtx, qs.disks), nil
 }
 
-type QemuVMImpl struct {
-	name string
-	path string
+type qemuVMImpl struct {
+	name     string
+	workCtx  spec.WorkContext
+	memoryGb int
+	diskServ spec.DiskService
+	disks    []string
+	netDev   []string
 }
 
-func (qs *QemuVMImpl) Name() string {
+func newQemuVM(name string, workCtx spec.WorkContext, diskServ spec.DiskService) *qemuVMImpl {
+	return &qemuVMImpl{
+		name:     name,
+		workCtx:  workCtx,
+		diskServ: diskServ,
+		memoryGb: 1,
+		disks:    []string{},
+		netDev:   []string{},
+	}
+}
+
+func (qs *qemuVMImpl) Name() string {
 	return qs.name
 }
 
-func (qs *QemuVMImpl) SetCloudInitConfig(config string) {
+func (qs *qemuVMImpl) SetCloudInitConfig(config string) {
 
 }
 
-func (qs *QemuVMImpl) AddDataDisk(path string) {
-
+func (qs *qemuVMImpl) AddDataDisk(path string, sizeGB int) {
+	if !qs.diskServ.DataDiskExists(path) {
+		err := qs.diskServ.CreateDataDisk(path, sizeGB, spec.FileSystemExt4)
+		if err != nil {
+			return
+		}
+	}
+	qs.disks = append(qs.disks, path)
 }
 
-func (qs *QemuVMImpl) AddNetworkDevice(bridge string, vlan int) {
-
+func (qs *qemuVMImpl) AddNetworkDevice(bridge string, vlan int) {
+	if vlan != 0 {
+		qs.netDev = append(qs.netDev, fmt.Sprintf("%s.%d", bridge, vlan))
+	} else {
+		qs.netDev = append(qs.netDev, bridge)
+	}
 }
 
-func (qs *QemuVMImpl) Start() error {
+func (qs *qemuVMImpl) Start() error {
+	vmPath := fmt.Sprintf("%s/.assets/%s/system.qcow2", qs.workCtx.WorkDir(), qs.name)
 	cmdArr := []string{"qemu-system-x86_64"}
 	cmdArr = append(cmdArr, "-enable-kvm")
-	cmdArr = append(cmdArr, "-m", "1G")
+	cmdArr = append(cmdArr, "-m", fmt.Sprintf("%dG", qs.memoryGb))
 	cmdArr = append(cmdArr, "-cpu", "host")
 	//cmdArr = append(cmdArr, "-daemonize", "-pidfile "+qs.name+".pid")
-	cmdArr = append(cmdArr, "-drive", "file="+qs.path+",if=virtio,format=qcow2")
-	cmdArr = append(cmdArr, "-netdev", "bridge,id=net0,br=vmbr0")
-	cmdArr = append(cmdArr, "-device", "virtio-net-pci,netdev=net0")
-	cmd := exec.Command(cmdArr[0], cmdArr[1:]...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println("Error:", err)
+	cmdArr = append(cmdArr, "-drive", "file="+vmPath+",if=virtio,format=qcow2")
+	for _, disk := range qs.disks {
+		diskPath := fmt.Sprintf("%s/%s", qs.workCtx.WorkDir(), disk)
+		cmdArr = append(cmdArr, "-drive", "file="+diskPath+",if=virtio,format=qcow2")
 	}
-	fmt.Println(string(output))
+	for i, netDev := range qs.netDev {
+		id := fmt.Sprintf("net%d", i+1)
+		cmdArr = append(cmdArr, "-netdev", "bridge,id="+id+",br="+netDev)
+		cmdArr = append(cmdArr, "-device", "virtio-net-pci,netdev="+id)
+	}
+	err := qs.workCtx.RunCommand(cmdArr...)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (qs *QemuVMImpl) Shutdown() error {
+func (qs *qemuVMImpl) Shutdown() error {
 	return nil
 }
 
-func (qs *QemuVMImpl) IsRunning() bool {
+func (qs *qemuVMImpl) IsRunning() bool {
 	return false
 }

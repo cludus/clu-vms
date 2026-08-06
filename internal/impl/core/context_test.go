@@ -6,12 +6,15 @@ import (
 )
 
 func TestWorkContext(t *testing.T) {
-	wc := NewLocalContext("testdata")
+	wc, err := NewLocalContext("testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if wc.GetType() != spec.WorkContextTypeLocal {
 		t.Fatal("wrong work context type")
 	}
 
-	err := wc.CreateDir("dummy_dir")
+	err = wc.CreateDir("dummy_dir")
 	if err != nil {
 		t.Fatal("failed to create directory")
 	}
