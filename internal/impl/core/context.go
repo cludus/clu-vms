@@ -162,3 +162,11 @@ func (wc *WorkContextImpl) DirExists(path string) bool {
 
 	return info.IsDir()
 }
+
+func (wc *WorkContextImpl) ReadFile(path string) (string, error) {
+	bytes, err := os.ReadFile(filepath.Join(wc.workDir, path))
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}

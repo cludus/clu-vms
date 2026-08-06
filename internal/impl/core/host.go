@@ -2,6 +2,7 @@ package core
 
 import (
 	"clu-vms/internal/spec"
+	"clu-vms/internal/utils"
 )
 
 type FileHostHandler struct {
@@ -17,7 +18,7 @@ func defaultHostDefinition() spec.HostDefinition {
 				User: "my-user",
 				Pass: "my-pass",
 			},
-			OS:            spec.Alpine_3_24(),
+			OS:            spec.Alpine_3_24,
 			MemoryGB:      2,
 			StorageSizeGB: 50,
 		},
@@ -36,20 +37,33 @@ func defaultHostDefinition() spec.HostDefinition {
 	}
 }
 
-func NewFileHostHandler(workCtx spec.WorkContext, fileName string) *FileHostHandler {
-	hostFile := fileName
+func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (*FileHostHandler, error) {
+	hostFile := ""
+	if fileName != nil {
+		hostFile = *fileName
+	}
 	if hostFile == "" {
 		hostFile = "vms.yml"
 	}
 
-	host := defaultHostDefinition()
+	var host spec.HostDefinition
 	if workCtx.FileExists(hostFile) {
-		// read file to host definition
+		content, err := workCtx.ReadFile(hostFile)
+		if err != nil {
+			return nil, err
+		}
+
+		err = utils.ParseYaml(content, &host)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		host = defaultHostDefinition()
 	}
 
 	return &FileHostHandler{
 		workCtx:  workCtx,
-		hostFile: fileName,
+		hostFile: hostFile,
 		host:     host,
-	}
+	}, nil
 }

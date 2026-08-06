@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 )
 
 type osImage struct {
@@ -19,17 +20,18 @@ var osImages map[spec.OSImagesType]osImage
 const imgsPath = ".assets/imgs/"
 
 func newOsImage(osType spec.OSImagesType, url string) osImage {
+	osName, _, _ := strings.Cut(string(osType), "_")
 	return osImage{
-		filepath: filepath.Join(imgsPath, string(osType.OS)+".qcow2"),
+		filepath: filepath.Join(imgsPath, osName+".qcow2"),
 		url:      url,
-		name:     string(osType.OS),
+		name:     string(osType),
 		osType:   osType,
 	}
 }
 
 func init() {
 	osImages = make(map[spec.OSImagesType]osImage)
-	osImages[spec.Alpine_3_24()] = newOsImage(spec.Alpine_3_24(), "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2")
+	osImages[spec.Alpine_3_24] = newOsImage(spec.Alpine_3_24, "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2")
 }
 
 type OSImages struct {

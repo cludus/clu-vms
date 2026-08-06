@@ -1,37 +1,37 @@
 package spec
 
 type UserCredentials struct {
-	User string
-	Pass string
+	User string `yaml:"user"`
+	Pass string `yaml:"pass"`
 }
 
 type HostBridge struct {
-	Name   string
-	PhysIf string
-	IP     string
-	Create bool
+	Name   string `yaml:"name"`
+	PhysIf string `yaml:"physIf"`
+	IP     string `yaml:"ip"`
+	Create bool   `yaml:"create"`
 }
 
 type VmDefinition struct {
-	UserCredentials UserCredentials
-	OS              OSImagesType
-	MemoryGB        uint16
-	StorageSizeGB   uint16
-	Name            string
-	IPAddress       string
+	UserCredentials UserCredentials `yaml:"userCredentials"`
+	OS              OSImagesType    `yaml:"os"`
+	MemoryGB        uint16          `yaml:"memoryGB"`
+	StorageSizeGB   uint16          `yaml:"storageSizeGB"`
+	Name            string          `yaml:"name"`
+	IPAddress       string          `yaml:"ipAddress"`
 }
 
 type VmDefaultDefinition struct {
-	UserCredentials UserCredentials
-	OS              OSImagesType
-	MemoryGB        uint16
-	StorageSizeGB   uint16
+	UserCredentials UserCredentials `yaml:"userCredentials"`
+	OS              OSImagesType    `yaml:"os"`
+	MemoryGB        uint16          `yaml:"memoryGB"`
+	StorageSizeGB   uint16          `yaml:"storageSizeGB"`
 }
 
 type HostDefinition struct {
-	Defaults VmDefaultDefinition
-	Bridge   HostBridge
-	Hosts    []VmDefinition
+	Defaults VmDefaultDefinition `yaml:"defaults"`
+	Bridge   HostBridge          `yaml:"bridge"`
+	Hosts    []VmDefinition      `yaml:"hosts"`
 }
 
 type HostHandler interface {

@@ -30,7 +30,7 @@ func (qs *QemuServiceImpl) CreateVM(name string) (spec.QemuVM, error) {
 		}
 	}
 
-	err := qs.imgs.CopyOSImage(spec.Alpine_3_24(), vmFileName)
+	err := qs.imgs.CopyOSImage(spec.Alpine_3_24, vmFileName)
 	if err != nil {
 		return nil, err
 	}

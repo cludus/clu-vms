@@ -17,12 +17,12 @@ func TestOSImages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	osImgExists := osImgs.OSExists(spec.Alpine_3_24())
+	osImgExists := osImgs.OSExists(spec.Alpine_3_24)
 	if osImgExists {
 		t.Fatal("image exists")
 	}
 
-	downloaded, err := osImgs.DownloadLatest(spec.Alpine_3_24())
+	downloaded, err := osImgs.DownloadLatest(spec.Alpine_3_24)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestOSImages(t *testing.T) {
 		t.Fatal("image not downloaded")
 	}
 
-	err = osImgs.CopyOSImage(spec.Alpine_3_24(), "my-alpine.qcow2")
+	err = osImgs.CopyOSImage(spec.Alpine_3_24, "my-alpine.qcow2")
 	if err != nil {
 		t.Fatal(err)
 	}

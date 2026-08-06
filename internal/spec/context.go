@@ -27,4 +27,5 @@ type WorkContext interface {
 	DirExists(path string) bool
 	CopyFile(source string, target string) error
 	DeleteFile(path string) error
+	ReadFile(path string) (string, error)
 }
