@@ -3,8 +3,8 @@ python = "latest"
 yq = "latest"
 "aqua:coreos/butane" = "latest"
 
-[tasks.install]
-description = "Install all project dependencies"
+[tasks.install-tools]
+description = "Install all project tools (mise-managed and system)"
 run = """
 # Install mise-managed tools (python, yq)
 mise install
@@ -29,7 +29,7 @@ for tool in butane genisoimage qemu-img qemu-nbd qemu-system-x86_64 sfdisk mkfs.
 done
 """
 
-[tasks.check]
+[tasks.check-tools]
 description = "Verify all required tools are installed"
 run = """
 errors=0
@@ -55,3 +55,7 @@ fi
 echo ""
 echo "All tools present."
 """
+
+[tasks.go-test]
+description = "Run Go tests"
+run = "go test ./..."
