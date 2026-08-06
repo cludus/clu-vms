@@ -15,7 +15,13 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	ctx := core.NewLocalContext(wd)
+
+	ctx, err := core.NewLocalContext(wd)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	err = ctx.RunCommand("ls", "-l")
 	if err != nil {
 		fmt.Println(err)
