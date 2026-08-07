@@ -3,12 +3,14 @@ package core
 import (
 	"clu-vms/internal/spec"
 	"clu-vms/internal/utils"
+	"fmt"
 )
 
 type FileHostHandler struct {
-	workCtx  spec.WorkContext
-	hostFile string
-	host     spec.HostDefinition
+	workCtx     spec.WorkContext
+	hostFile    string
+	host        spec.HostDefinition
+	isDraftHost bool
 }
 
 func defaultHostDefinition() spec.HostDefinition {
@@ -43,7 +45,13 @@ func (handler *FileHostHandler) save() error {
 		return err
 	}
 
-	return handler.workCtx.WriteFile(handler.hostFile, content)
+	err = handler.workCtx.WriteFile(handler.hostFile, content)
+	if err != nil {
+		return err
+	}
+
+	handler.isDraftHost = false
+	return nil
 }
 
 func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (*FileHostHandler, error) {
@@ -56,6 +64,7 @@ func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (*FileHostHa
 	}
 
 	var host spec.HostDefinition
+	var isDraftHost bool
 	if workCtx.FileExists(hostFile) {
 		content, err := workCtx.ReadFile(hostFile)
 		if err != nil {
@@ -68,12 +77,14 @@ func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (*FileHostHa
 		}
 	} else {
 		host = defaultHostDefinition()
+		isDraftHost = true
 	}
 
 	return &FileHostHandler{
-		workCtx:  workCtx,
-		hostFile: hostFile,
-		host:     host,
+		workCtx:     workCtx,
+		hostFile:    hostFile,
+		host:        host,
+		isDraftHost: isDraftHost,
 	}, nil
 }
 
@@ -104,9 +115,48 @@ func (handler *FileHostHandler) AddHost(definition spec.VmDefinition, overwriteI
 		return handler.save()
 	}
 	if hostCurrentIndex != -1 {
-		return &spec.HostAlreadyExistsError{Name: definition.Name}
+		return fmt.Errorf("host %q already exists", definition.Name)
 	}
 
 	handler.host.Hosts = append(handler.host.Hosts, definition)
 	return handler.save()
+}
+
+func (handler *FileHostHandler) CheckDefinition() error {
+	// Check if it is a draft host definition
+	if handler.isDraftHost {
+		return fmt.Errorf("host definition file %q does not exist, modify your host definition and save your changes", handler.hostFile)
+	}
+
+	// Check bridge definition
+	if handler.host.Bridge.Name == "" {
+		return fmt.Errorf("bridge name is missing")
+	}
+	if handler.host.Bridge.PhysIf == "" {
+		return fmt.Errorf("bridge physical interface is missing")
+	}
+	if handler.host.Bridge.IP == "" {
+		return fmt.Errorf("bridge IP address is missing")
+	}
+
+	hasDefaultsCredentials := handler.host.Defaults.UserCredentials.User != "" && handler.host.Defaults.UserCredentials.Pass != ""
+	hasDefaultsOS := handler.host.Defaults.OS != ""
+
+	// Check each host definition
+	for _, host := range handler.host.Hosts {
+		if host.Name == "" {
+			return fmt.Errorf("host name is missing")
+		}
+		if host.IPAddress == "" {
+			return fmt.Errorf("host %q IP address is missing", host.Name)
+		}
+		if !hasDefaultsCredentials && (host.UserCredentials.User == "" || host.UserCredentials.Pass == "") {
+			return fmt.Errorf("host %q user credentials are missing", host.Name)
+		}
+		if !hasDefaultsOS && host.OS == "" {
+			return fmt.Errorf("host %q OS is missing", host.Name)
+		}
+	}
+
+	return nil
 }

@@ -1,18 +1,8 @@
 package spec
 
-import "fmt"
-
 type UserCredentials struct {
 	User string `yaml:"user"`
 	Pass string `yaml:"pass"`
-}
-
-type HostAlreadyExistsError struct {
-	Name string
-}
-
-func (e *HostAlreadyExistsError) Error() string {
-	return fmt.Sprintf("host %q already exists", e.Name)
 }
 
 type HostBridge struct {
@@ -49,4 +39,5 @@ type HostHandler interface {
 	SetDefaults(definition VmDefaultDefinition) error
 	SetBridge(bridge HostBridge) error
 	AddHost(definition VmDefinition, overwriteIfExists bool) error
+	CheckDefinition() error
 }
