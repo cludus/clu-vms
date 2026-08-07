@@ -85,3 +85,28 @@ func (handler *FileHostHandler) SetDefaults(definition spec.VmDefaultDefinition)
 	handler.host.Defaults = definition
 	return handler.save()
 }
+
+func (handler *FileHostHandler) SetBridge(bridge spec.HostBridge) error {
+	handler.host.Bridge = bridge
+	return handler.save()
+}
+
+func (handler *FileHostHandler) AddHost(definition spec.VmDefinition, overwriteIfExists bool) error {
+	hostCurrentIndex := -1
+	for i, host := range handler.host.Hosts {
+		if host.Name == definition.Name {
+			hostCurrentIndex = i
+			break
+		}
+	}
+	if overwriteIfExists && hostCurrentIndex != -1 {
+		handler.host.Hosts[hostCurrentIndex] = definition
+		return handler.save()
+	}
+	if hostCurrentIndex != -1 {
+		return &spec.HostAlreadyExistsError{Name: definition.Name}
+	}
+
+	handler.host.Hosts = append(handler.host.Hosts, definition)
+	return handler.save()
+}
