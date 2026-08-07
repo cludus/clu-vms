@@ -170,3 +170,7 @@ func (wc *WorkContextImpl) ReadFile(path string) (string, error) {
 	}
 	return string(bytes), nil
 }
+
+func (wc *WorkContextImpl) WriteFile(path string, content string) error {
+	return os.WriteFile(filepath.Join(wc.workDir, path), []byte(content), os.FileMode.Perm(0644))
+}

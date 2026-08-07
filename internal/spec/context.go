@@ -28,4 +28,5 @@ type WorkContext interface {
 	CopyFile(source string, target string) error
 	DeleteFile(path string) error
 	ReadFile(path string) (string, error)
+	WriteFile(path string, content string) error
 }

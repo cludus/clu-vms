@@ -37,6 +37,15 @@ func defaultHostDefinition() spec.HostDefinition {
 	}
 }
 
+func (handler *FileHostHandler) save() error {
+	content, err := utils.SerializeYaml(handler.host)
+	if err != nil {
+		return err
+	}
+
+	return handler.workCtx.WriteFile(handler.hostFile, content)
+}
+
 func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (*FileHostHandler, error) {
 	hostFile := ""
 	if fileName != nil {
@@ -66,4 +75,13 @@ func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (*FileHostHa
 		hostFile: hostFile,
 		host:     host,
 	}, nil
+}
+
+func (handler *FileHostHandler) Definition() spec.HostDefinition {
+	return handler.host
+}
+
+func (handler *FileHostHandler) SetDefaults(definition spec.VmDefaultDefinition) error {
+	handler.host.Defaults = definition
+	return handler.save()
 }
