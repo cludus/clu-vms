@@ -88,40 +88,6 @@ func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (*FileHostHa
 	}, nil
 }
 
-func (handler *FileHostHandler) Definition() spec.HostDefinition {
-	return handler.host
-}
-
-func (handler *FileHostHandler) SetDefaults(definition spec.VmDefaultDefinition) error {
-	handler.host.Defaults = definition
-	return handler.save()
-}
-
-func (handler *FileHostHandler) SetBridge(bridge spec.HostBridge) error {
-	handler.host.Bridge = bridge
-	return handler.save()
-}
-
-func (handler *FileHostHandler) AddHost(definition spec.VmDefinition, overwriteIfExists bool) error {
-	hostCurrentIndex := -1
-	for i, host := range handler.host.Hosts {
-		if host.Name == definition.Name {
-			hostCurrentIndex = i
-			break
-		}
-	}
-	if overwriteIfExists && hostCurrentIndex != -1 {
-		handler.host.Hosts[hostCurrentIndex] = definition
-		return handler.save()
-	}
-	if hostCurrentIndex != -1 {
-		return fmt.Errorf("host %q already exists", definition.Name)
-	}
-
-	handler.host.Hosts = append(handler.host.Hosts, definition)
-	return handler.save()
-}
-
 func (handler *FileHostHandler) CheckDefinition() error {
 	// Check if it is a draft host definition
 	if handler.isDraftHost {
@@ -159,4 +125,62 @@ func (handler *FileHostHandler) CheckDefinition() error {
 	}
 
 	return nil
+}
+
+func (handler *FileHostHandler) Definition() spec.HostDefinition {
+	return handler.host
+}
+
+func (handler *FileHostHandler) SetDefaults(definition spec.VmDefaultDefinition) error {
+	handler.host.Defaults = definition
+	return handler.save()
+}
+
+func (handler *FileHostHandler) SetBridge(bridge spec.HostBridge) error {
+	handler.host.Bridge = bridge
+	return handler.save()
+}
+
+func (handler *FileHostHandler) AddHost(definition spec.VmDefinition, overwriteIfExists bool) error {
+	hostCurrentIndex := -1
+	for i, host := range handler.host.Hosts {
+		if host.Name == definition.Name {
+			hostCurrentIndex = i
+			break
+		}
+	}
+	if overwriteIfExists && hostCurrentIndex != -1 {
+		handler.host.Hosts[hostCurrentIndex] = definition
+		return handler.save()
+	}
+	if hostCurrentIndex != -1 {
+		return fmt.Errorf("host %q already exists", definition.Name)
+	}
+
+	handler.host.Hosts = append(handler.host.Hosts, definition)
+	return handler.save()
+}
+
+func (handler *FileHostHandler) DeleteHost(name string) error {
+	hostCurrentIndex := -1
+	for i, host := range handler.host.Hosts {
+		if host.Name == name {
+			hostCurrentIndex = i
+			break
+		}
+	}
+	if hostCurrentIndex != -1 {
+		handler.host.Hosts = append(handler.host.Hosts[:hostCurrentIndex], handler.host.Hosts[hostCurrentIndex+1:]...)
+		return handler.save()
+	}
+
+	return fmt.Errorf("host %q does not exist", name)
+}
+
+func (handler *FileHostHandler) Start(name ...string) error {
+	return fmt.Errorf("Start is not implemented")
+}
+
+func (handler *FileHostHandler) Stop(name ...string) error {
+	return fmt.Errorf("Stop is not implemented")
 }
