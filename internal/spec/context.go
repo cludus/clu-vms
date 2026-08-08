@@ -17,6 +17,7 @@ type WorkContextRemoteInfo struct {
 type WorkContext interface {
 	GetType() WorkContextType
 	RunCommand(cmd ...string) error
+	RunCommandWithOutput(cmd ...string) (string, error)
 	WorkDir() string
 	CreateDir(path string) error
 	DeleteDir(path string) error

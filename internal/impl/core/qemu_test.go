@@ -1,6 +1,9 @@
 package core
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestQemu(t *testing.T) {
 	workCtx, err := NewLocalContext("testdata")
@@ -19,6 +22,14 @@ func TestQemu(t *testing.T) {
 
 	err = vm.Start()
 	if err != nil {
-		return
+		t.Fatal(err)
+	}
+	time.Sleep(30 * time.Second)
+	err = vm.Shutdown()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for vm.IsRunning() {
+		time.Sleep(1 * time.Second)
 	}
 }

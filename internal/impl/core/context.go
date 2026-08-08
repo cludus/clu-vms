@@ -33,6 +33,13 @@ func (wc *WorkContextImpl) GetType() spec.WorkContextType {
 	return wc.wcType
 }
 
+func (wc *WorkContextImpl) RunCommandWithOutput(cmdStr ...string) (string, error) {
+	cmd := exec.Command(cmdStr[0], cmdStr[1:]...)
+	cmd.Dir = wc.workDir
+	output, err := cmd.CombinedOutput()
+	return string(output), err
+}
+
 func (wc *WorkContextImpl) RunCommand(cmdStr ...string) error {
 	cmd := exec.Command(cmdStr[0], cmdStr[1:]...)
 	cmd.Dir = wc.workDir

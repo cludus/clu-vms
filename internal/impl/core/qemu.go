@@ -3,6 +3,10 @@ package core
 import (
 	"clu-vms/internal/spec"
 	"fmt"
+	"log/slog"
+	"net"
+	"strconv"
+	"strings"
 )
 
 type QemuServiceImpl struct {
@@ -90,11 +94,15 @@ func (qs *qemuVMImpl) AddNetworkDevice(bridge string, vlan int) {
 
 func (qs *qemuVMImpl) Start() error {
 	vmPath := fmt.Sprintf("%s/.assets/%s/system.qcow2", qs.workCtx.WorkDir(), qs.name)
+	pidPath := fmt.Sprintf("%s/.assets/%s/vm.pid", qs.workCtx.WorkDir(), qs.name)
+	socketPath := fmt.Sprintf("%s/.assets/%s/vm.socket", qs.workCtx.WorkDir(), qs.name)
 	cmdArr := []string{"qemu-system-x86_64"}
 	cmdArr = append(cmdArr, "-enable-kvm")
 	cmdArr = append(cmdArr, "-m", fmt.Sprintf("%dG", qs.memoryGb))
 	cmdArr = append(cmdArr, "-cpu", "host")
-	//cmdArr = append(cmdArr, "-daemonize", "-pidfile "+qs.name+".pid")
+	cmdArr = append(cmdArr, "-daemonize", "-pidfile", pidPath)
+	cmdArr = append(cmdArr, "-display", "none") // remove this line to see the VM console
+	cmdArr = append(cmdArr, "-monitor", "unix:"+socketPath+",server,nowait")
 	cmdArr = append(cmdArr, "-drive", "file="+vmPath+",if=virtio,format=qcow2")
 	for _, disk := range qs.disks {
 		diskPath := fmt.Sprintf("%s/%s", qs.workCtx.WorkDir(), disk)
@@ -113,9 +121,41 @@ func (qs *qemuVMImpl) Start() error {
 }
 
 func (qs *qemuVMImpl) Shutdown() error {
+	slog.Info("Shutting down VM " + qs.name + "...")
+	socketPath := fmt.Sprintf("%s/.assets/%s/vm.socket", qs.workCtx.WorkDir(), qs.name)
+	c, err := net.Dial("unix", socketPath)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	_, err = c.Write([]byte("system_powerdown\n"))
+	if err != nil {
+		return fmt.Errorf("Failed to send shutdown command: %v", err)
+	}
 	return nil
 }
 
 func (qs *qemuVMImpl) IsRunning() bool {
-	return false
+	p := qs.runningProcessId()
+	if p == 0 {
+		if qs.workCtx.FileExists(fmt.Sprintf("%s/.assets/%s/vm.pid", qs.workCtx.WorkDir(), qs.name)) {
+			slog.Info(fmt.Sprintf("VM %s may not be running but its PID file still exists", qs.name))
+			return true
+		}
+		return false
+	}
+	slog.Info(fmt.Sprintf("VM %s is running with PID %d", qs.name, p))
+	return true
+}
+
+func (qs *qemuVMImpl) runningProcessId() int {
+	output, err := qs.workCtx.RunCommandWithOutput("pgrep", "-f", fmt.Sprintf("qemu-system-x86_64.*%s", qs.name))
+	if err != nil || len(output) == 0 {
+		return 0
+	}
+	p, err := strconv.Atoi(strings.TrimSuffix(output, "\n"))
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to parse PID from output: %s", output))
+	}
+	return p
 }
