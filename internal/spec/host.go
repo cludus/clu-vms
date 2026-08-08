@@ -36,9 +36,10 @@ type HostDefinition struct {
 
 type HostHandler interface {
 	CheckDefinition() error
-	Definition() HostDefinition
+	Definition() *HostDefinition
 	SetDefaults(definition VmDefaultDefinition) error
 	SetBridge(bridge HostBridge) error
+	Host(name string) (*VmDefinition, error)
 	AddHost(definition VmDefinition, overwriteIfExists bool) error
 	DeleteHost(name string) error
 	Start(name ...string) error

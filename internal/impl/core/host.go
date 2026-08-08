@@ -127,8 +127,8 @@ func (handler *FileHostHandler) CheckDefinition() error {
 	return nil
 }
 
-func (handler *FileHostHandler) Definition() spec.HostDefinition {
-	return handler.host
+func (handler *FileHostHandler) Definition() *spec.HostDefinition {
+	return &handler.host
 }
 
 func (handler *FileHostHandler) SetDefaults(definition spec.VmDefaultDefinition) error {
@@ -139,6 +139,15 @@ func (handler *FileHostHandler) SetDefaults(definition spec.VmDefaultDefinition)
 func (handler *FileHostHandler) SetBridge(bridge spec.HostBridge) error {
 	handler.host.Bridge = bridge
 	return handler.save()
+}
+
+func (handler *FileHostHandler) Host(name string) (*spec.VmDefinition, error) {
+	for _, host := range handler.host.Hosts {
+		if host.Name == name {
+			return &host, nil
+		}
+	}
+	return nil, fmt.Errorf("host %q not found", name)
 }
 
 func (handler *FileHostHandler) AddHost(definition spec.VmDefinition, overwriteIfExists bool) error {
@@ -178,9 +187,11 @@ func (handler *FileHostHandler) DeleteHost(name string) error {
 }
 
 func (handler *FileHostHandler) Start(name ...string) error {
-	return fmt.Errorf("Start is not implemented")
+	// TODO
+	return fmt.Errorf("start is not implemented")
 }
 
 func (handler *FileHostHandler) Stop(name ...string) error {
-	return fmt.Errorf("Stop is not implemented")
+	// TODO
+	return fmt.Errorf("stop is not implemented")
 }
