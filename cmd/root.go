@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"clu-vms/internal/impl/core"
+	"clu-vms/internal/cli/host"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -24,46 +24,13 @@ func Execute() {
 var cfgFile string
 var verbose bool
 
-var checkHostDefinitionCmd = &cobra.Command{
-	Use:   "host-check-definition",
-	Short: "Check the host definition",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		wd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-
-		ctx, err := core.NewLocalContext(wd)
-		if err != nil {
-			return err
-		}
-
-		cfgFile, err := cmd.Flags().GetString("config")
-		if err != nil {
-			return err
-		}
-
-		handler, err := core.NewFileHostHandler(ctx, &cfgFile)
-		if err != nil {
-			return err
-		}
-
-		cmd.Printf("Checking host definition for file %s...\n", cfgFile)
-		err = handler.CheckDefinition()
-		if err != nil {
-			cmd.Printf("  Check failed: %v\n", err)
-		} else {
-			cmd.Println("  Host definition is valid!")
-		}
-
-		return nil
-	},
-}
-
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "vms.yml", "config file (default is vms.yml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "vms.yml", "config file")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
-	rootCmd.AddCommand(checkHostDefinitionCmd)
+	rootCmd.AddGroup(&cobra.Group{ID: "host", Title: "Host Commands"})
+
+	host.RootCmd.GroupID = "host"
+	rootCmd.AddCommand(host.RootCmd)
 }
