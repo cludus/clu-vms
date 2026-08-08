@@ -2,6 +2,7 @@ package host
 
 import (
 	"clu-vms/internal/impl/core"
+	"clu-vms/internal/spec"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -15,32 +16,36 @@ var RootCmd = &cobra.Command{
 It provides a set of subcommands to check host definitions and manage virtual machines.`,
 }
 
+func createHostHandler(cmd *cobra.Command) (spec.HostHandler, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, err := core.NewLocalContext(wd)
+	if err != nil {
+		return nil, err
+	}
+
+	cfgFile, err := cmd.Flags().GetString("config")
+	if err != nil {
+		return nil, err
+	}
+
+	return core.NewFileHostHandler(ctx, &cfgFile)
+}
+
 var checkHostDefinitionCmd = &cobra.Command{
 	Use:     "check-definition",
 	Aliases: []string{"check-def"},
 	Short:   "Check the host definition",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		wd, err := os.Getwd()
+		handler, err := createHostHandler(cmd)
 		if err != nil {
 			return err
 		}
 
-		ctx, err := core.NewLocalContext(wd)
-		if err != nil {
-			return err
-		}
-
-		cfgFile, err := cmd.Flags().GetString("config")
-		if err != nil {
-			return err
-		}
-
-		handler, err := core.NewFileHostHandler(ctx, &cfgFile)
-		if err != nil {
-			return err
-		}
-
-		cmd.Printf("Checking host definition for file %s...\n", cfgFile)
+		cmd.Println("Checking host definition...")
 		err = handler.CheckDefinition()
 		if err != nil {
 			cmd.Printf("  Check failed: %v\n", err)
