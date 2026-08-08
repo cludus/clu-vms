@@ -16,30 +16,31 @@ func TestHostParsing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if hostHandler.host.Defaults.UserCredentials.User != "alpine" {
-		t.Errorf("expected user to be 'alpine', got %q", hostHandler.host.Defaults.UserCredentials.User)
+	hostDef := hostHandler.Definition()
+	if hostDef.Defaults.UserCredentials.User != "alpine" {
+		t.Errorf("expected user to be 'alpine', got %q", hostDef.Defaults.UserCredentials.User)
 	}
-	if hostHandler.host.Defaults.UserCredentials.Pass != "mypass1" {
-		t.Errorf("expected pass to be 'mypass1', got %q", hostHandler.host.Defaults.UserCredentials.Pass)
+	if hostDef.Defaults.UserCredentials.Pass != "mypass1" {
+		t.Errorf("expected pass to be 'mypass1', got %q", hostDef.Defaults.UserCredentials.Pass)
 	}
-	if hostHandler.host.Defaults.OS != spec.Alpine_3_24 {
-		t.Errorf("expected OS to be 'alpine_3_24', got %q", hostHandler.host.Defaults.OS)
+	if hostDef.Defaults.OS != spec.Alpine_3_24 {
+		t.Errorf("expected OS to be 'alpine_3_24', got %q", hostDef.Defaults.OS)
 	}
-	if hostHandler.host.Defaults.MemoryGB != 4 {
-		t.Errorf("expected MemoryGB to be 4, got %d", hostHandler.host.Defaults.MemoryGB)
+	if hostDef.Defaults.MemoryGB != 4 {
+		t.Errorf("expected MemoryGB to be 4, got %d", hostDef.Defaults.MemoryGB)
 	}
-	if hostHandler.host.Defaults.StorageSizeGB != 100 {
-		t.Errorf("expected StorageSizeGB to be 100, got %d", hostHandler.host.Defaults.StorageSizeGB)
+	if hostDef.Defaults.StorageSizeGB != 100 {
+		t.Errorf("expected StorageSizeGB to be 100, got %d", hostDef.Defaults.StorageSizeGB)
 	}
 
-	if len(hostHandler.host.Hosts) != 1 {
-		t.Fatalf("expected 1 host, got %d", len(hostHandler.host.Hosts))
+	if len(hostDef.Hosts) != 1 {
+		t.Fatalf("expected 1 host, got %d", len(hostDef.Hosts))
 	}
-	if hostHandler.host.Hosts[0].Name != "vm-first" {
-		t.Errorf("expected first host name to be 'vm-first', got %q", hostHandler.host.Hosts[0].Name)
+	if hostDef.Hosts[0].Name != "vm-first" {
+		t.Errorf("expected first host name to be 'vm-first', got %q", hostDef.Hosts[0].Name)
 	}
-	if hostHandler.host.Hosts[0].IPAddress != "192.168.100.50" {
-		t.Errorf("expected first host IP address to be '192.168.100.50', got %q", hostHandler.host.Hosts[0].IPAddress)
+	if hostDef.Hosts[0].IPAddress != "192.168.100.50" {
+		t.Errorf("expected first host IP address to be '192.168.100.50', got %q", hostDef.Hosts[0].IPAddress)
 	}
 }
 
@@ -79,11 +80,12 @@ func TestFileHostHandlerDefinitionAndSetDefaults(t *testing.T) {
 		t.Fatalf("SetDefaults failed: %v", err)
 	}
 
-	if hostHandler.Definition().Defaults.UserCredentials.User != "test-user" {
-		t.Errorf("expected updated user 'test-user', got %q", hostHandler.Definition().Defaults.UserCredentials.User)
+	definition = hostHandler.Definition()
+	if definition.Defaults.UserCredentials.User != "test-user" {
+		t.Errorf("expected updated user 'test-user', got %q", definition.Defaults.UserCredentials.User)
 	}
-	if hostHandler.Definition().Defaults.MemoryGB != 8 {
-		t.Errorf("expected updated MemoryGB 8, got %d", hostHandler.Definition().Defaults.MemoryGB)
+	if definition.Defaults.MemoryGB != 8 {
+		t.Errorf("expected updated MemoryGB 8, got %d", definition.Defaults.MemoryGB)
 	}
 
 	reloadedHandler, err := NewFileHostHandler(workCtx, &testFile)

@@ -54,7 +54,7 @@ func (handler *FileHostHandler) save() error {
 	return nil
 }
 
-func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (*FileHostHandler, error) {
+func NewFileHostHandler(workCtx spec.WorkContext, fileName *string) (spec.HostHandler, error) {
 	hostFile := ""
 	if fileName != nil {
 		hostFile = *fileName
