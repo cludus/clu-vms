@@ -56,7 +56,7 @@ type VaultSecrets interface {
 ## Phase 0 — Interface lock
 
 - [x] Agree on the refined `VaultSecrets` interface.
-- [ ] Add interface tests (in-memory mock) used by both backends.
+- [x] Add interface tests (in-memory mock) used by both backends.
 
 ## Phase 1 — Pure-Go implementation (`internal/impl/secrets/protonmail/`)
 

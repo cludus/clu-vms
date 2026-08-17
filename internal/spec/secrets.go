@@ -1,5 +1,7 @@
 package spec
 
+import "errors"
+
 // VaultSecrets defines the contract for a GPG-backed secret vault.
 //
 // Storage layout (set up by Init):
@@ -91,3 +93,39 @@ type VaultSecrets interface {
 	// encrypted before the removal.
 	RemoveKey(fingerprint string) error
 }
+
+// Sentinel errors. Implementations should return these (wrapped with %w
+// when additional context helps) so callers can branch on errors.Is.
+var (
+	// ErrNoRecipients is returned when an operation requires at least one
+	// configured recipient (e.g. SetSecret) but the vault has none.
+	ErrNoRecipients = errors.New("vault: no recipients configured")
+
+	// ErrLastRecipient is returned by RemoveKey when the supplied
+	// fingerprint is the only configured recipient.
+	ErrLastRecipient = errors.New("vault: cannot remove the last recipient")
+
+	// ErrDuplicateRecipient is returned by AddKey when a recipient with
+	// the same fingerprint is already configured.
+	ErrDuplicateRecipient = errors.New("vault: recipient already configured")
+
+	// ErrRecipientNotFound is returned when a referenced recipient does
+	// not exist in the vault (e.g. RemoveKey on an unknown fingerprint).
+	ErrRecipientNotFound = errors.New("vault: recipient not found")
+
+	// ErrSecretNotFound is returned by GetSecret when no secret with the
+	// given name exists.
+	ErrSecretNotFound = errors.New("vault: secret not found")
+
+	// ErrDecryptionFailed is returned by GetSecret when no available
+	// private key could decrypt the secret.
+	ErrDecryptionFailed = errors.New("vault: decryption failed")
+
+	// ErrInvalidKey is returned when an armored key block is empty or
+	// malformed.
+	ErrInvalidKey = errors.New("vault: invalid armored key")
+
+	// ErrInvalidVault is returned when a method is called on an
+	// uninitialized vault or with invalid arguments.
+	ErrInvalidVault = errors.New("vault: invalid vault state")
+)
